@@ -98,9 +98,9 @@ const serialSort = (a, b) =>
   );
 
 const ORDERED_TYPES = [
-  "One sound crackers","Ground Chakkar","Flower Pots","Twinkling Star","Rockets","Bombs",
+  "One sound crackers", "One Sound Crackers Premium", "Ground Chakkar","Flower Pots","Twinkling Star","Rockets","Bombs",
   "Repeating Shots","Comets Sky Shots","Fancy pencil varieties","Fountain and Fancy Novelties",
-  "Matches","Guns and Caps","Sparklers","Premium Sparklers","Gift Boxes","Kids Special ",
+  "Matches","Guns and Caps","Sparklers","Premium Sparklers","Gift Boxes","Kids Special","Chorsa and Gaints",
 ];
 
 const MinPurchasePipeline = memo(({ subtotalRaw, onCartOpen, isUnlocked }) => {
@@ -241,9 +241,6 @@ const ProductCard = memo(({ product, count, onAdd, onRemove, onShowDetails, onIm
           <p style={{ color: C.gold, fontSize: "12px", trackingWith: "wider", fontWeight: 800 }}>
             {product.serial_number}
           </p>
-          {product.brand && (
-            <span className="pill pill-brand text-[10px] px-2 py-0.5">{product.brand}</span>
-          )}
         </div>
         
         <h3 style={{
@@ -1844,7 +1841,7 @@ const Pricelist = () => {
         </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: "1.5rem" }}>
-          <p className="label" style={{ marginBottom: "0.5rem" }}>Index Segmentation</p>
+          <p className="label" style={{ marginBottom: "0.5rem" }}>Categories</p>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <button className="hidden lg:flex glassmorphic"
               onClick={() => typeScrollRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
@@ -1870,14 +1867,14 @@ const Pricelist = () => {
 
         {brandList.length > 1 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: "3rem" }}>
-            <p className="label" style={{ marginBottom: "0.5rem" }}>Origin Domain</p>
+            <p className="label" style={{ marginBottom: "0.5rem" }}>Brands</p>
             <div className="hscroll" style={{ display: "flex", gap: "10px", overflowX: "auto", padding: "4px 0 8px" }}>
               {brandList.map(brand => {
                 const isSelected = selectedBrand === brand;
                 return (
                   <button key={brand} onClick={() => { setSelectedBrand(brand); setBrandSearchInput(""); setBrandSearchTerm(""); }}
                     className={`brand-chip ${isSelected ? "active" : ""}`}>
-                    {brand === "All" ? "All Domains" : brand}
+                    {brand === "All" ? "All" : brand}
                   </button>
                 );
               })}

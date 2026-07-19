@@ -272,10 +272,10 @@ export default function List() {
     yOffset += 10;
 
     const orderedTypes = [
-      "One sound crackers", "Ground Chakkar", "Flower Pots", "Twinkling Star",
+      "One sound crackers", "One Sound Crackers Premium", "Ground Chakkar", "Flower Pots", "Twinkling Star",
       "Rockets", "Bombs", "Repeating Shots", "Comets Sky Shots",
       "Fancy pencil varieties", "Fountain and Fancy Novelties", "Matches",
-      "Guns and Caps", "Sparklers", "Premium Sparklers", "Gift Boxes", "Kids Special "
+      "Guns and Caps", "Sparklers", "Premium Sparklers", "Gift Boxes", "Kids Special",
     ];
 
     const fetchImageAsBase64 = (url) => {
