@@ -98,9 +98,13 @@ const serialSort = (a, b) =>
   );
 
 const ORDERED_TYPES = [
-  "One sound crackers", "One Sound Crackers Premium", "Ground Chakkar","Flower Pots","Twinkling Star","Rockets","Bombs",
-  "Repeating Shots","Comets Sky Shots","Fancy pencil varieties","Fountain and Fancy Novelties",
-  "Matches","Guns and Caps","Sparklers","Premium Sparklers","Gift Boxes","Kids Special","Chorsa and Gaints",
+  "One sound crackers", "One Sound Crackers Premium", "Chorsa and Gaints","Delux Crackers",
+  "Bijili Crackers","Bombs", "Paper Bombs","Twinkling Star","Rockets",
+  "Kids Special","Matches","Flower Pots", "Colour Fountain Mini", "Colour Fountain Mega","Crackling Fountain",
+  "Ground Chakkars", "New Arrivals", "Vip Special Crackers",
+  "Sparklers","Premium Sparklers","Sky Shot Mini","Sky Shot Single", "Grand Sky Shot","Fun And Crazy Sky Shot", 
+  "Repeating Shots", "Multi Shots", "Comets Sky Shots","Premium Set Out", "Fancy pencil",
+  "Fountain and Fancy Novelties","Guns and Caps","Gift Boxes",
 ];
 
 const MinPurchasePipeline = memo(({ subtotalRaw, onCartOpen, isUnlocked }) => {
@@ -905,22 +909,27 @@ const Pricelist = () => {
     const budget = Number(aiBudget);
     if (!budget || budget <= 0) { showError("Please enter a valid budget"); return; }
     const categories = {
-      kids: ["new_arrivals","fancy_pencil_varieties","twinkling_star","guns_and_caps","matches"],
-      sound: ["bombs","one_sound_crackers"],
-      night: ["repeating_shots","comets_sky_shots","new_arrivals","rockets"],
-      kidsnight: ["fountain_and_fancy_novelties","flower_pots","ground_chakkar","sparklers","premium_sparklers"],
+      kids: ["new_arrivals", "fancy_pencil", "twinkling_star", "guns_and_caps", "matches", "kids_special"],
+      sound: ["bombs", "paper_bombs", "chorsa_and_gaints", "one_sound_crackers_premium", "one_sound_crackers", "delux_crackers", "bijili_crackers", "vip_special_crackers"],
+      night: ["repeating_shots", "multi_shots", "comets_sky_shots", "sky_shot_mini", "sky_shot_single", "grand_sky_shot", "fun_and_crazy_sky_shot", "premium_set_out", "rockets", "new_arrivals"],
+      kidsnight: ["fountain_and_fancy_novelties", "flower_pots", "ground_chakkars", "sparklers", "premium_sparklers", "colour_fountain_mini", "colour_fountain_mega", "crackling_fountain"],
     };
-    const selectedPrefs = ["night","kids","sound","kidsnight"].filter(p => aiPreferences[p]);
+    const selectedPrefs = ["night", "kids", "sound", "kidsnight"].filter(p => aiPreferences[p]);
     if (!selectedPrefs.length) { showError("Select at least one preference"); return; }
+
     const budgetPerPref = budget / selectedPrefs.length;
     const tempCart = {};
     const sparklerSizeCount = {};
     const getSparklerSize = name => { const m = name?.match(/(\d+)\s*cm/i); return m ? m[1] : null; };
+
+    const MAX_QTY_RATIO = 0.2;
+    const MIN_REMAINING_RATIO = 0.02;
+
     for (const pref of selectedPrefs) {
-      const phase1Budget = budgetPerPref * 0.70;
       const types = categories[pref];
       const byType = {};
       for (const type of types) byType[type] = [];
+
       products.filter(p =>
         types.includes(p.product_type?.toLowerCase()) &&
         !(typeof p.status === "string" && p.status.toLowerCase() === "free")
@@ -928,47 +937,66 @@ const Pricelist = () => {
         const type = p.product_type?.toLowerCase();
         if (byType[type]) byType[type].push({ ...p, finalPrice: roundPrice(p.price) * (1 - (p.discount || 0) / 100) });
       });
-      for (const type of types) byType[type].sort(() => Math.random() - 0.5).sort((a, b) => {
-        const d = a.finalPrice - b.finalPrice;
-        return Math.abs(d) < 50 ? Math.random() - 0.5 : d;
-      });
-      const sorted = types.flatMap(type => byType[type] || []).filter(p => p.finalPrice > 0);
-      let prefSpent = 0;
-      for (const p of sorted) {
-        if (prefSpent + p.finalPrice > phase1Budget || tempCart[p.serial_number]) continue;
-        if (p.product_type === "sparklers" || p.product_type === "premium_sparklers") {
-          const size = getSparklerSize(p.productname) || "unknown";
-          if ((sparklerSizeCount[size] || 0) >= 3) continue;
-          sparklerSizeCount[size] = (sparklerSizeCount[size] || 0) + 1;
-        }
-        tempCart[p.serial_number] = 1; prefSpent += p.finalPrice;
+
+      for (const type of types) {
+        byType[type].sort(() => Math.random() - 0.5).sort((a, b) => {
+          const d = a.finalPrice - b.finalPrice;
+          return Math.abs(d) < 50 ? Math.random() - 0.5 : d;
+        });
       }
-      const phase2Budget = budgetPerPref * 0.30;
-      const boostCandidates = types.flatMap(type =>
-        Object.keys(tempCart).map(serial => {
-          const p = products.find(x => x.serial_number === serial);
-          if (!p || p.product_type?.toLowerCase() !== type) return null;
-          return { ...p, finalPrice: roundPrice(p.price) * (1 - (p.discount || 0) / 100) };
-        }).filter(Boolean).sort(() => Math.random() - 0.5)
-      );
-      let boostRemaining = phase2Budget;
-      const boostThreshold = budgetPerPref * 0.02;
-      let safetyLimit = 500;
-      while (boostRemaining > boostThreshold && safetyLimit-- > 0) {
-        let addedAny = false;
-        for (const p of boostCandidates) {
-          if (boostRemaining < p.finalPrice) continue;
-          const maxQty = Math.max(1, Math.floor((budgetPerPref * 0.25) / p.finalPrice));
+
+      const canAddSparkler = (p) => {
+        if (p.product_type !== "sparklers" && p.product_type !== "premium_sparklers") return true;
+        const size = getSparklerSize(p.productname) || "unknown";
+        return (sparklerSizeCount[size] || 0) < 3;
+      };
+      const registerSparkler = (p) => {
+        if (p.product_type !== "sparklers" && p.product_type !== "premium_sparklers") return;
+        const size = getSparklerSize(p.productname) || "unknown";
+        sparklerSizeCount[size] = (sparklerSizeCount[size] || 0) + 1;
+      };
+
+      let prefSpent = 0;
+
+      for (const type of types) {
+        const candidate = byType[type].find(p => p.finalPrice > 0 && !tempCart[p.serial_number] && canAddSparkler(p));
+        if (!candidate) continue;
+        const remaining = budgetPerPref - prefSpent;
+        if (candidate.finalPrice > remaining) continue;
+        tempCart[candidate.serial_number] = 1;
+        prefSpent += candidate.finalPrice;
+        registerSparkler(candidate);
+      }
+
+      const allCandidates = types.flatMap(type => byType[type]).filter(p => p.finalPrice > 0);
+      allCandidates.sort((a, b) => a.finalPrice - b.finalPrice);
+      const cheapestPrice = allCandidates.length ? allCandidates[0].finalPrice : Infinity;
+      const stopThreshold = Math.min(budgetPerPref * MIN_REMAINING_RATIO, cheapestPrice * 0.9);
+
+      let safetyLimit = 2000;
+      while (budgetPerPref - prefSpent > stopThreshold && safetyLimit-- > 0) {
+        const remaining = budgetPerPref - prefSpent;
+        const shuffled = [...allCandidates].sort(() => Math.random() - 0.5);
+        let added = false;
+
+        for (const p of shuffled) {
+          if (p.finalPrice > remaining) continue;
           const currentQty = tempCart[p.serial_number] || 0;
+          const maxQty = Math.max(1, Math.floor((budgetPerPref * MAX_QTY_RATIO) / p.finalPrice));
           if (currentQty >= maxQty) continue;
+          if (currentQty === 0 && !canAddSparkler(p)) continue;
+
           tempCart[p.serial_number] = currentQty + 1;
-          boostRemaining -= p.finalPrice;
-          addedAny = true;
-          if (boostRemaining <= boostThreshold) break;
+          prefSpent += p.finalPrice;
+          if (currentQty === 0) registerSparkler(p);
+          added = true;
+          break;
         }
-        if (!addedAny) break;
+
+        if (!added) break;
       }
     }
+
     setSuggestedCart(tempCart);
   }, [aiBudget, aiPreferences, products, showError]);
 
@@ -1435,7 +1463,7 @@ const Pricelist = () => {
                     <ShoppingCart style={{ width: 14, height: 14, color: C.gold }} />
                   </div>
                   <div>
-                    <p className="display" style={{ fontSize: "15px", color: C.ink }}>Selected Manifest</p>
+                    <p className="display" style={{ fontSize: "15px", color: C.ink }}>Selected Products</p>
                     <p style={{ fontSize: "11px", color: C.slate }}>
                       {cartItemCount} item{cartItemCount !== 1 ? 's' : ''}{freeCartItem ? " + 1 promotional module 🎁" : ""}
                     </p>
@@ -1744,7 +1772,7 @@ const Pricelist = () => {
                           <p style={{ fontWeight: 700, color: C.ink }}>{Object.keys(suggestedCart).length} Units Aggregated</p>
                           <p style={{ fontSize: "13px", color: C.gold }}>Evaluation: ≈ ₹{suggestedTotals}</p>
                         </div>
-                        <button onClick={generateSuggestions} className="btn-outline" style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px" }}>Recompute</button>
+                        <button onClick={generateSuggestions} className="btn-outline" style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px" }}>Regenerate</button>
                       </div>
                       {Object.keys(suggestedCart).length === 0 ? (
                         <div style={{ textAlign: "center", padding: "2rem 0", color: C.muted }}>
@@ -1803,7 +1831,7 @@ const Pricelist = () => {
                     ? <button onClick={handleAiBack} className="btn-outline" style={{ padding: "10px 20px", borderRadius: "10px" }}>Back</button>
                     : <div />}
                   <button onClick={handleAiNext} className="btn-primary" style={{ padding: "10px 24px", borderRadius: "10px" }}>
-                    {aiStep < 2 ? "Next" : "Compile"}
+                    {aiStep < 2 ? "Next" : "Generate"}
                   </button>
                 </div>
               </div>

@@ -53,6 +53,7 @@ export default function List() {
   const [toggleStates, setToggleStates] = useState({})
   const [currentPage, setCurrentPage] = useState(1)
   const [brands, setBrands] = useState([])
+  const [bulkStatusLoading, setBulkStatusLoading] = useState(false)
   const [formData, setFormData] = useState({
     productname: "", serial_number: "", price: "", discount: "", per: "", product_type: "",
     description: "", box_count: 1, brand: "", free: false, images: [], existingImages: [], imagesToDelete: [],
@@ -113,13 +114,75 @@ export default function List() {
       setToggleStates((prev) => ({ ...prev, [productKey]: !prev[productKey] }))
       const response = await fetch(`${API_BASE_URL}/api/products/${tableName}/${product.id}/${endpoint}`, { method: "PATCH" })
       if (!response.ok) {
-        // revert on failure
         setToggleStates((prev) => ({ ...prev, [productKey]: !prev[productKey] }))
         throw new Error(`Failed to toggle ${endpoint}`)
       }
       fetchProducts()
     } catch (err) {
       setError(err.message)
+    }
+  }
+
+  const chunkArray = (arr, size) => {
+    const chunks = []
+    for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size))
+    return chunks
+  }
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  const toggleProductStatus = async (product, attempt = 0) => {
+    const tableName = product.product_type.toLowerCase().replace(/\s+/g, "_")
+    const res = await fetch(`${API_BASE_URL}/api/products/${tableName}/${product.id}/toggle-status`, { method: "PATCH" })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const msg = data.error || data.message || `Failed to toggle status for ${product.productname}`
+      const isConnectionLimit = /too many clients|connection/i.test(msg)
+      if (isConnectionLimit && attempt < 3) {
+        await sleep(300 * (attempt + 1))
+        return toggleProductStatus(product, attempt + 1)
+      }
+      throw new Error(msg)
+    }
+  }
+
+  const handleBulkStatusToggle = async (turnOn) => {
+    const targets = filteredProducts.filter((p) => {
+      const key = `${p.product_type}-${p.id}`
+      const current = toggleStates[key] ?? (p.status === "on")
+      return current !== turnOn
+    })
+    if (targets.length === 0) return
+
+    setBulkStatusLoading(true)
+    setError("")
+
+    setToggleStates((prev) => {
+      const updated = { ...prev }
+      targets.forEach((p) => { updated[`${p.product_type}-${p.id}`] = turnOn })
+      return updated
+    })
+
+    const BATCH_SIZE = 15
+    const batches = chunkArray(targets, BATCH_SIZE)
+    let hadError = false
+
+    try {
+      for (const batch of batches) {
+        const results = await Promise.allSettled(batch.map((product) => toggleProductStatus(product)))
+        const failed = results.filter((r) => r.status === "rejected")
+        if (failed.length > 0) {
+          hadError = true
+          setError(failed[0].reason?.message || "Some products failed to update.")
+        }
+      }
+    } catch (err) {
+      hadError = true
+      setError(err.message || "Some products failed to update.")
+    } finally {
+      fetchProducts()
+      setBulkStatusLoading(false)
+      if (!hadError) setError("")
     }
   }
 
@@ -272,10 +335,13 @@ export default function List() {
     yOffset += 10;
 
     const orderedTypes = [
-      "One sound crackers", "One Sound Crackers Premium", "Ground Chakkar", "Flower Pots", "Twinkling Star",
-      "Rockets", "Bombs", "Repeating Shots", "Comets Sky Shots",
-      "Fancy pencil varieties", "Fountain and Fancy Novelties", "Matches",
-      "Guns and Caps", "Sparklers", "Premium Sparklers", "Gift Boxes", "Kids Special",
+      "One sound crackers", "One Sound Crackers Premium", "Chorsa and Gaints","Delux Crackers",
+      "Bijili Crackers","Bombs", "Paper Bombs","Twinkling Star","Rockets",
+      "Kids Special","Matches","Flower Pots", "Colour Fountain Mini", "Colour Fountain Mega","Crackling Fountain",
+      "Ground Chakkars", "New Arrivals", "Vip Special Crackers",
+      "Sparklers","Premium Sparklers","Sky Shot Mini","Sky Shot Single", "Grand Sky Shot","Fun And Crazy Sky Shot", 
+      "Repeating Shots", "Multi Shots", "Comets Sky Shots","Premium Set Out", "Fancy pencil",
+      "Fountain and Fancy Novelties","Guns and Caps","Gift Boxes",
     ];
 
     const fetchImageAsBase64 = (url) => {
@@ -578,6 +644,27 @@ export default function List() {
                     <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
                     <input type="text" placeholder="Name or serial number..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 outline-none focus:border-indigo-400 transition-colors box-border" />
+                  </div>
+                </div>
+                <div className="min-w-48">
+                  <label className="block text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1.5">
+                    Bulk Status {filterType === "all" ? "(All Products)" : `(${capitalize(filterType)})`}
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleBulkStatusToggle(true)}
+                      disabled={bulkStatusLoading}
+                      className="h-10 px-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                    >
+                      {bulkStatusLoading ? "..." : "Turn All ON"}
+                    </button>
+                    <button
+                      onClick={() => handleBulkStatusToggle(false)}
+                      disabled={bulkStatusLoading}
+                      className="h-10 px-3 rounded-xl text-xs font-bold text-white bg-slate-500 hover:bg-slate-600 disabled:opacity-50 transition-colors"
+                    >
+                      {bulkStatusLoading ? "..." : "Turn All OFF"}
+                    </button>
                   </div>
                 </div>
               </div>
