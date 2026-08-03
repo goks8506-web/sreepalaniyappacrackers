@@ -13,6 +13,19 @@ import need from '../../default.jpg';
 
 Modal.setAppElement("#root")
 
+// Canonical display order for product types. Kept in sync with the
+// ORDERED_TYPES array used in Pricelist.jsx so admin views and the
+// customer-facing pricelist always present categories in the same order.
+const ORDERED_TYPES = [
+  "One sound crackers", "One Sound Crackers Premium", "Chorsa and Gaints", "Delux Crackers",
+  "Bijili Crackers", "Bombs", "Paper Bombs", "Twinkling Star", "Rockets",
+  "Kids Special", "Matches", "Flower Pots", "Colour Fountain Mini", "Colour Fountain Mega", "Crackling Fountain",
+  "Ground Chakkars", "New Arrivals", "Vip Special Crackers",
+  "Sparklers", "Premium Sparklers", "Sky Shot Mini", "Sky Shot Single", "Grand Sky Shot", "Fun And Crazy Sky Shot",
+  "Repeating Shots", "Multi Shots", "Comets Sky Shots", "Premium Set Out", "Fancy pencil",
+  "Fountain and Fancy Novelties", "Guns and Caps", "Gift Boxes",
+]
+
 const PaginBtn = ({ label, onClick, disabled, active }) => (
   <button
     onClick={onClick}
@@ -70,9 +83,30 @@ export default function List() {
     } catch (err) { setError(err.message) }
   }
 
+  // Sorts a flat list of product_type keys (e.g. "one_sound_crackers") so
+  // that they follow the order defined in ORDERED_TYPES. Any product type
+  // returned by the API that isn't present in ORDERED_TYPES is not dropped —
+  // it's appended at the end, sorted alphabetically, so newly created
+  // product types remain visible until someone adds them to ORDERED_TYPES.
+  const arrangeProductTypes = (types) => {
+    const orderRank = new Map(
+      ORDERED_TYPES.map((t, i) => [t.replace(/\s+/g, "_").toLowerCase(), i])
+    )
+    return [...types].sort((a, b) => {
+      const rankA = orderRank.has(a) ? orderRank.get(a) : Infinity
+      const rankB = orderRank.has(b) ? orderRank.get(b) : Infinity
+      if (rankA !== rankB) return rankA - rankB
+      return a.localeCompare(b)
+    })
+  }
+
   const fetchProductTypes = () =>
     fetchData(`${API_BASE_URL}/api/product-types`, "Failed to fetch product types", (data) =>
-      setProductTypes(data.filter((item) => item.product_type !== "gift_box_dealers").map((item) => item.product_type)))
+      setProductTypes(
+        arrangeProductTypes(
+          data.filter((item) => item.product_type !== "gift_box_dealers").map((item) => item.product_type)
+        )
+      ))
 
   const fetchBrands = () =>
     fetchData(`${API_BASE_URL}/api/brands`, "Failed to fetch brands", (data) => setBrands(data))
@@ -324,25 +358,17 @@ export default function List() {
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('SREE PALANIYAPPA CRACKERS', pageWidth / 2, yOffset, { align: 'center' });
+    doc.text('SRI PALANIYAPPA CRACKERS', pageWidth / 2, yOffset, { align: 'center' });
     yOffset += 10;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
-    doc.text('www.palaniyappacrackers.com   |   +91 81242 5943', pageWidth / 2, yOffset, { align: 'center' });
+    doc.text('www.sripalaniyappacrackers.com   |   +91 81242 5943', pageWidth / 2, yOffset, { align: 'center' });
     yOffset += 10;
     const year = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
     doc.text(`PRICELIST - ${year}`, pageWidth / 2, yOffset, { align: 'center' });
     yOffset += 10;
 
-    const orderedTypes = [
-      "One sound crackers", "One Sound Crackers Premium", "Chorsa and Gaints","Delux Crackers",
-      "Bijili Crackers","Bombs", "Paper Bombs","Twinkling Star","Rockets",
-      "Kids Special","Matches","Flower Pots", "Colour Fountain Mini", "Colour Fountain Mega","Crackling Fountain",
-      "Ground Chakkars", "New Arrivals", "Vip Special Crackers",
-      "Sparklers","Premium Sparklers","Sky Shot Mini","Sky Shot Single", "Grand Sky Shot","Fun And Crazy Sky Shot", 
-      "Repeating Shots", "Multi Shots", "Comets Sky Shots","Premium Set Out", "Fancy pencil",
-      "Fountain and Fancy Novelties","Guns and Caps","Gift Boxes",
-    ];
+    const orderedTypes = ORDERED_TYPES;
 
     const fetchImageAsBase64 = (url) => {
       return new Promise((resolve) => {

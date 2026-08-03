@@ -67,7 +67,7 @@ export default function About() {
             <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-8">
               <div>
                 <span className="label">Since 2009 · Sivakasi</span>
-                <h1 className="display text-5xl md:text-6xl mt-4">Discover <span className="text-gold">Sree Palaniyappa Fireworks</span></h1>
+                <h1 className="display text-5xl md:text-6xl mt-4">Discover <span className="text-gold">Sri Palaniyappa Fireworks</span></h1>
               </div>
 
               <div className="space-y-6 text-lg" style={{ color: C.slate }}>

@@ -44,7 +44,7 @@ const GlobalStyles = () => (
 
 const dosData = [
   { icon: CheckCircle, num: "01", title: "Follow Instructions", description: "Always read and follow the instructions printed on each firework package carefully before use." },
-  { icon: Shield, num: "02", title: "Buy Authorised Products", description: "Purchase fireworks only from licensed and reputable manufacturers like Sree Palaniyappa Crackers." },
+  { icon: Shield, num: "02", title: "Buy Authorised Products", description: "Purchase fireworks only from licensed and reputable manufacturers like Sri Palaniyappa Crackers." },
   { icon: Eye, num: "03", title: "Use Open Spaces Only", description: "Light fireworks only in outdoor areas with ample open space, away from buildings and flammable materials." },
   { icon: Users, num: "04", title: "One Person, Safe Distance", description: "Only one designated adult should light fireworks. Maintain safe distance for others." },
   { icon: Droplets, num: "05", title: "Keep Water Nearby", description: "Always have water buckets or hose within reach for immediate fire suppression." },

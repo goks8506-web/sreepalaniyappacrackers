@@ -50,7 +50,7 @@ export default function Contact() {
               <span className="label">GET IN TOUCH</span>
               <h1 className="display text-5xl md:text-6xl mt-4 mb-4">Contact Us</h1>
               <p className="serif text-xl max-w-2xl mx-auto" style={{ color: C.slate }}>
-                Ready to light up your celebrations? Reach out to Sree Palaniyappa Crackers.
+                Ready to light up your celebrations? Reach out to Sri Palaniyappa Crackers.
               </p>
             </div>
 

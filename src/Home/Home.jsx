@@ -352,7 +352,7 @@ function IntroLoader({ onComplete }) {
               fontSize: "30px", color: "#f8fafc",
               marginBottom: 16,
             }}>
-              Sree Palaniyappa<br/>
+              Sri Palaniyappa<br/>
               <span style={{ color: "#f59e0b" }}>Crackers</span>
             </h1>
 
@@ -778,7 +778,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
             <motion.div initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true }} className="relative">
               <div className="relative rounded-2xl overflow-hidden border" style={{ borderColor: C.border }}>
-                <img src={about || "/placeholder.svg"} alt="Sree Palaniyappa Crackers" className="w-full h-96 object-cover opacity-80" />
+                <img src={about || "/placeholder.svg"} alt="Sri Palaniyappa Crackers" className="w-full h-96 object-cover opacity-80" />
               </div>
               <div className="absolute -top-5 -left-5 w-20 h-20 rounded-2xl flex flex-col items-center justify-center glassmorphic shadow-2xl">
                 <span className="font-black text-2xl text-white leading-none">15</span>
@@ -789,11 +789,11 @@ export default function Home() {
               <div>
                 <p className="label mb-2">Our Architecture</p>
                 <h2 className="display text-3xl md:text-5xl" style={{ color: C.ink }}>
-                  Welcome to <br/><span style={{ color: C.gold }}>Sree Palaniyappa Crackers</span>
+                  Welcome to <br/><span style={{ color: C.gold }}>Sri Palaniyappa Crackers</span>
                 </h2>
               </div>
               <div className="space-y-5 text-base leading-relaxed" style={{ color: C.slate }}>
-                <p>Sree Palaniyappa Crackers has transitioned from an uncompromised manufacturing core into one of Sivakasi's premier seasonal operations — designed securely around the criteria of safety and premium verification standards.</p>
+                <p>Sri Palaniyappa Crackers has transitioned from an uncompromised manufacturing core into one of Sivakasi's premier seasonal operations — designed securely around the criteria of safety and premium verification standards.</p>
                 <p>We preserve explicit tracking matrices along standard corporate distribution networks, catering baseline value structures to wedding organizations, regional milestones, and institutional galas.</p>
               </div>
               <div className="flex items-start gap-4 p-5 rounded-2xl glassmorphic">
@@ -886,7 +886,7 @@ export default function Home() {
 
       <footer className="border-t bg-slate-950/40 backdrop-blur-xl" style={{ borderColor: C.border }}>
         <div className="px-4 sm:px-8 lg:px-12 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 border-b bg-void/50" style={{ borderColor: C.border }}>
-          <span className="text-white font-extrabold tracking-wider text-sm uppercase">Sree Palaniyappa Crackers</span>
+          <span className="text-white font-extrabold tracking-wider text-sm uppercase">Sri Palaniyappa Crackers</span>
           <span className="text-xs font-bold tracking-widest" style={{ color: C.gold }}>SIVAKASI · EST. 2009</span>
         </div>
         <div className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 py-20">
@@ -925,7 +925,7 @@ export default function Home() {
               Statutory Declaration: Adhering meticulously to the 2018 supreme judicial parameters of India, digital programmatic clearing structures for firecrackers are entirely unauthorized. Items mapped on this node operate strictly for manifest inventory cataloguing configurations.
             </p>
             <p className="text-xs" style={{ color: C.muted }}>
-              © 2026 <span style={{ color: C.gold }}>Sree Palaniyappa Crackers</span>. All rights reserved. Architecture engineered by <span style={{ color: C.gold }}>SPD Solutions</span>
+              © 2026 <span style={{ color: C.gold }}>Sri Palaniyappa Crackers</span>. All rights reserved. Architecture engineered by <span style={{ color: C.gold }}>SPD Solutions</span>
             </p>
           </div>
         </div>

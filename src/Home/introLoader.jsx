@@ -226,7 +226,7 @@ export default function IntroLoader({ onComplete, minDuration = DURATION }) {
               fontSize: "clamp(2rem,6vw,3rem)", color: "#fff",
               lineHeight: 1.05, letterSpacing: "-0.03em", marginBottom: 6,
             }}>
-              Sree Palaniyappa<br/>
+              Sri Palaniyappa<br/>
               <span style={{ color: "#c0392b" }}>Crackers</span>
             </h1>
 
