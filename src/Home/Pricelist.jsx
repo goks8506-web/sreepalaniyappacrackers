@@ -813,6 +813,7 @@ const Pricelist = () => {
           new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }).compare(a.productname, b.productname);
         const seenSerials = new Set();
         const normalizedProducts = productsData.data
+          .filter(p => (p.status || "").toLowerCase() !== "off")
           .filter(p => !seenSerials.has(p.serial_number) && seenSerials.add(p.serial_number))
           .map(product => ({
             ...product,
