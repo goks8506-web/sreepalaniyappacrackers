@@ -100,7 +100,7 @@ const serialSort = (a, b) =>
 const ORDERED_TYPES = [
   "One sound crackers", "One Sound Crackers Premium", "Chorsa and Gaints","Delux Crackers",
   "Bijili Crackers","Bombs", "Paper Bombs","Twinkling Star","Rockets",
-  "Kids Special","Matches","Flower Pots", "Colour Fountain Mini", "Colour Fountain Mega","Crackling Fountain",
+  "Kids Special","Matches","Flower Pots", "Colour Fountain Mini", "Cololur Fountain Mega","Crackling Fountain",
   "Ground Chakkars", "New Arrivals", "Vip Special Crackers",
   "Sparklers","Premium Sparklers","Sky Shot Mini","Sky Shot Single", "Grand Sky Shot","Fun And Crazy Sky Shot", 
   "Repeating Shots", "Multi Shots", "Comets Sky Shots","Premium Set Out", "Fancy pencil",
