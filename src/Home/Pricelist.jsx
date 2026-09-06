@@ -689,103 +689,179 @@ const Pricelist = () => {
     return ["All", ...Array.from(brands).sort()];
   }, [products]);
 
-  const downloadPDF = useCallback(async () => {
+  const downloadPDF = useCallback(() => {
     if (!products.length) return;
-    const doc = new jsPDF();
+    const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
-    let yOffset = 20;
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(192, 57, 43);
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginL = 10;
+    const marginR = 10;
+    const tableWidth = pageWidth - marginL - marginR; // 190mm
+    let yOffset = 16;
+
+    // Header on first page
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(234, 88, 12); // #EA580C
     doc.text('SRI PALANIYAPPA CRACKERS', pageWidth / 2, yOffset, { align: 'center' });
-    yOffset += 10;
-    doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(70, 70, 70);
-    doc.text('Website - www.sripalaniyappacrackers.com', pageWidth / 2, yOffset, { align: 'center' });
     yOffset += 8;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Website: www.sripalaniyappacrackers.com   |   Contact: +91 81242 59430', pageWidth / 2, yOffset, { align: 'center' });
+    yOffset += 7;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
     doc.text('Retail Pricelist - 2026', pageWidth / 2, yOffset, { align: 'center' });
-    yOffset += 8;
-    doc.text('Contact Number - +91 81242 5943', pageWidth / 2, yOffset, { align: 'center' });
-    yOffset += 20;
+    yOffset += 12;
 
-    const fetchImageAsBase64 = (url) => new Promise((resolve) => {
-      if (!url) return resolve(null);
-      const img = new Image(); img.crossOrigin = 'Anonymous';
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const MAX = 80; let w = img.naturalWidth, h = img.naturalHeight;
-          if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
-          else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.75));
-        } catch { resolve(null); }
-      };
-      img.onerror = () => resolve(null); img.src = url;
-    });
+    const ROW_HEIGHT = 8.8; // Fits 20-30 products per page
+    const SECTION_HEADER_H = 8.5;
+    const COL_HEADER_H = 7.5;
+    const colDividers = [22, 44, 130, 152, 178];
 
-    const imageCache = {};
-    const allProducts = ORDERED_TYPES.flatMap(type => {
-      const typeKey = type.replace(/ /g, "_").toLowerCase();
-      return products.filter(p => p.product_type.toLowerCase() === typeKey);
-    });
-    await Promise.all(allProducts.map(async (product) => {
-      const images = Array.isArray(product.images) ? product.images : [];
-      const imgUrl = images.find(img => img && !img.includes('/video/') && !img.toLowerCase().endsWith('.gif'));
-      if (imgUrl) imageCache[product.serial_number] = await fetchImageAsBase64(imgUrl);
-    }));
+    const drawColHeader = (y) => {
+      doc.setFillColor(234, 88, 12);
+      doc.rect(marginL, y, tableWidth, COL_HEADER_H, 'F');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      const hTextY = y + 5.2;
+      doc.text('Sl', 16, hTextY, { align: 'center' });
+      doc.text('Code', 33, hTextY, { align: 'center' });
+      doc.text('Product Name', 46, hTextY, { align: 'left' });
+      doc.text('Rate', 150, hTextY, { align: 'right' });
+      doc.text('Disc. Rate', 176, hTextY, { align: 'right' });
+      doc.text('Per', 189, hTextY, { align: 'center' });
+    };
 
-    const ROW_HEIGHT = 18; const IMG_SIZE = 14;
+    let slNo = 1;
+
     for (const type of ORDERED_TYPES) {
       const typeKey = type.replace(/ /g, "_").toLowerCase();
-      const typeProducts = products.filter(p => p.product_type.toLowerCase() === typeKey).sort(serialSort);
+      const typeProducts = products
+        .filter(p => p.product_type?.toLowerCase() === typeKey)
+        .sort(serialSort);
+
       if (!typeProducts.length) continue;
-      const sectionHeaderHeight = 10;
-      if (yOffset + sectionHeaderHeight > doc.internal.pageSize.getHeight() - 20) { doc.addPage(); yOffset = 20; }
-      doc.setFillColor(220, 220, 220); doc.rect(10, yOffset, pageWidth - 20, sectionHeaderHeight, 'F');
-      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(40, 40, 40);
-      doc.text(capitalize(type), 14, yOffset + 7); yOffset += sectionHeaderHeight + 1;
-      const colHeaderHeight = 8;
-      doc.setFillColor(192, 57, 43); doc.rect(10, yOffset, pageWidth - 20, colHeaderHeight, 'F');
-      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
-      const cols = { sl: 12, code: 23, img: 39, name: 61, rate: 131, disc: 152, per: 176 };
-      doc.text('Sl', cols.sl, yOffset + 5.5); doc.text('Code', cols.code, yOffset + 5.5);
-      doc.text('Image', cols.img, yOffset + 5.5); doc.text('Product Name', cols.name, yOffset + 5.5);
-      doc.text('Rate', cols.rate, yOffset + 5.5); doc.text('Disc. Rate', cols.disc, yOffset + 5.5);
-      doc.text('Per', cols.per, yOffset + 5.5); yOffset += colHeaderHeight + 1;
-      let slNo = 1;
+
+      // Check if space is needed for Section Header + Col Header + at least 2 rows
+      if (yOffset + SECTION_HEADER_H + COL_HEADER_H + (ROW_HEIGHT * 2) > pageHeight - 15) {
+        doc.addPage();
+        yOffset = 15;
+      }
+
+      // Draw Section Category Header
+      doc.setFillColor(241, 245, 249);
+      doc.rect(marginL, yOffset, tableWidth, SECTION_HEADER_H, 'F');
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(marginL, yOffset, tableWidth, SECTION_HEADER_H);
+      // Small brand accent indicator
+      doc.setFillColor(234, 88, 12);
+      doc.rect(marginL, yOffset, 3.5, SECTION_HEADER_H, 'F');
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text(capitalize(type), marginL + 7, yOffset + 5.8);
+      yOffset += SECTION_HEADER_H;
+
+      // Draw Column Header
+      drawColHeader(yOffset);
+      yOffset += COL_HEADER_H;
+
       for (const product of typeProducts) {
-        if (yOffset + ROW_HEIGHT > doc.internal.pageSize.getHeight() - 15) { doc.addPage(); yOffset = 20; }
-        const discount = roundPrice(product.price) * (product.discount / 100);
-        const discountedRate = roundPrice(product.price) - discount;
-        if (slNo % 2 === 0) { doc.setFillColor(255, 247, 237); doc.rect(10, yOffset, pageWidth - 20, ROW_HEIGHT, 'F'); }
-        doc.setDrawColor(220, 220, 220); doc.rect(10, yOffset, pageWidth - 20, ROW_HEIGHT);
-        [21, 37, 59, 129, 150, 173].forEach(x => doc.line(x, yOffset, x, yOffset + ROW_HEIGHT));
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(50, 50, 50);
-        const textY = yOffset + ROW_HEIGHT / 2 + 1.5;
-        doc.text(String(slNo++), cols.sl, textY);
-        doc.text(product.serial_number || '', cols.code, textY);
-        const nameLines = doc.splitTextToSize(product.productname, 66);
-        const nameY = nameLines.length > 1 ? yOffset + 5 : textY;
-        doc.text(nameLines.slice(0, 2), cols.name, nameY);
-        doc.setTextColor(192, 57, 43);
-        doc.text(`Rs.${formatPrice(product.price)}`, cols.rate, textY);
-        doc.setTextColor(46, 125, 50);
-        doc.text(`Rs.${formatPrice(discountedRate)}`, cols.disc, textY);
-        doc.setTextColor(50, 50, 50);
-        doc.text(product.per || '', cols.per, textY);
-        const imgData = imageCache[product.serial_number];
-        if (imgData) {
-          try { doc.addImage(imgData, 'JPEG', cols.img - 1, yOffset + (ROW_HEIGHT - IMG_SIZE) / 2, IMG_SIZE, IMG_SIZE); } catch {}
-        } else {
-          doc.setFillColor(245, 245, 245);
-          doc.rect(cols.img - 1, yOffset + (ROW_HEIGHT - IMG_SIZE) / 2, IMG_SIZE, IMG_SIZE, 'F');
-          doc.setFontSize(6); doc.setTextColor(180, 180, 180);
-          doc.text('No img', cols.img + 2, yOffset + ROW_HEIGHT / 2 + 1);
+        if (yOffset + ROW_HEIGHT > pageHeight - 15) {
+          doc.addPage();
+          yOffset = 15;
+          drawColHeader(yOffset);
+          yOffset += COL_HEADER_H;
         }
+
+        const price = roundPrice(product.price);
+        const discount = price * ((product.discount || 0) / 100);
+        const discountedRate = price - discount;
+
+        // Alternating row background
+        if (slNo % 2 === 0) {
+          doc.setFillColor(255, 250, 245);
+          doc.rect(marginL, yOffset, tableWidth, ROW_HEIGHT, 'F');
+        }
+
+        // Cell borders and vertical dividers
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(marginL, yOffset, tableWidth, ROW_HEIGHT);
+        colDividers.forEach(x => doc.line(x, yOffset, x, yOffset + ROW_HEIGHT));
+
+        const textY = yOffset + 6.0;
+
+        // Sl. No
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(String(slNo++), 16, textY, { align: 'center' });
+
+        // Serial / Code
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(30, 41, 59);
+        doc.text(product.serial_number || '', 33, textY, { align: 'center' });
+
+        // Product Name (width 82mm)
+        doc.setFont('helvetica', 'normal');
+        const nameLines = doc.splitTextToSize(product.productname || '', 82);
+        if (nameLines.length > 1) {
+          doc.setFontSize(8.5);
+          doc.setTextColor(15, 23, 42);
+          doc.text(nameLines.slice(0, 2), 46, yOffset + 3.4, { lineHeightFactor: 1.1 });
+        } else {
+          doc.setFontSize(10);
+          doc.setTextColor(15, 23, 42);
+          doc.text(nameLines[0] || '', 46, textY);
+        }
+
+        // Rate (MRP)
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(185, 28, 28);
+        doc.text(`Rs.${formatPrice(price)}`, 150, textY, { align: 'right' });
+
+        // Discounted Rate
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10.5);
+        doc.setTextColor(21, 128, 61);
+        doc.text(`Rs.${formatPrice(discountedRate)}`, 176, textY, { align: 'right' });
+
+        // Per
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(product.per || 'Unit', 189, textY, { align: 'center' });
+
         yOffset += ROW_HEIGHT;
       }
-      yOffset += 6;
+
+      yOffset += 4; // Spacing between categories
     }
+
+    // Page numbers & brand footer on all pages
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Sri Palaniyappa Crackers  •  www.sripalaniyappacrackers.com  •  Page ${i} of ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 6,
+        { align: 'center' }
+      );
+    }
+
     doc.save('SPC_Pricelist_2026.pdf');
   }, [products]);
 
