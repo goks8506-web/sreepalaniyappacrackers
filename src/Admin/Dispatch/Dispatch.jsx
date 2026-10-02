@@ -25,6 +25,20 @@ const statusColors = {
   delivered:  "text-emerald-600 bg-emerald-50 border-emerald-200",
 }
 
+const getDispatchCardStyles = (status) => {
+  const s = status?.toLowerCase();
+  if (s === 'paid') {
+    return 'bg-rose-50/85 border-rose-300 hover:border-rose-400';
+  }
+  if (s === 'packed') {
+    return 'bg-amber-50/90 border-amber-300 hover:border-amber-400';
+  }
+  if (s === 'dispatched' || s === 'delivered') {
+    return 'bg-emerald-50/85 border-emerald-300 hover:border-emerald-400';
+  }
+  return 'bg-white border-slate-200 hover:border-slate-300';
+};
+
 export default function Dispatch() {
   const [bookings, setBookings] = useState([]);
   const [filterStatus, setFilterStatus] = useState('');
@@ -319,9 +333,24 @@ export default function Dispatch() {
       <div className="hundred:ml-64 mobile:ml-0 mobile:px-3 w-auto">
         <div className="mx-auto px-6 py-8 w-full">
 
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Dispatch Customers</h1>
-            <p className="text-slate-400 mt-1.5 text-sm">Manage and update order dispatch statuses</p>
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Dispatch Customers</h1>
+              <p className="text-slate-400 mt-1 text-sm">Manage and update order dispatch statuses</p>
+            </div>
+            {/* Color Guide Note on Top Right */}
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl px-3.5 py-2 text-xs text-slate-600 flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+              <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Card Status:</span>
+              <span className="inline-flex items-center gap-1 font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span> Paid (Red)
+              </span>
+              <span className="inline-flex items-center gap-1 font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span> Packed (Yellow)
+              </span>
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Dispatched / Delivered (Green)
+              </span>
+            </div>
           </div>
 
           {error && <div className="bg-red-50 border border-red-200 border-l-4 border-l-red-500 text-red-700 px-4 py-3.5 rounded-xl mb-5 text-sm font-medium">⚠️ {error}</div>}
@@ -378,7 +407,10 @@ export default function Dispatch() {
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 mb-6">
               {currentOrders.map((booking) => (
-                <div key={booking.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+                <div
+                  key={booking.id}
+                  className={`border rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${getDispatchCardStyles(booking.status)}`}
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="text-base font-bold text-slate-800">{booking.customer_name || 'N/A'}</div>

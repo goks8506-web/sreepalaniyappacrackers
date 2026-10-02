@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../../../Config';
 import Sidebar from '../Sidebar/Sidebar';
 import Logout from '../Logout';
-import { FaDownload, FaTrash, FaSearch } from 'react-icons/fa';
+import { FaDownload, FaTrash, FaSearch, FaPhoneAlt, FaCheckCircle, FaCommentDots } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const StatusBadge = ({ status }) => {
@@ -25,6 +25,38 @@ const StatusBadge = ({ status }) => {
       {icons[status?.toLowerCase()] || status}
     </span>
   );
+};
+
+const ContactBadge = ({ contacted, note, onClick }) => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+        contacted
+          ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+          : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
+      }`}
+      title={contacted ? (note ? `Contacted: ${note}` : "Contacted") : "Click to mark as contacted"}
+    >
+      <span className={`w-2 h-2 rounded-full ${contacted ? "bg-emerald-500" : "bg-slate-400"}`}></span>
+      {contacted ? "Contacted" : "Not Contacted"}
+    </button>
+  );
+};
+
+const getTrackingCardStyles = (booking) => {
+  const status = booking.status?.toLowerCase();
+  if (status === 'paid') {
+    return 'bg-emerald-50/85 border-emerald-300 hover:border-emerald-400';
+  }
+  if (booking.contacted) {
+    return 'bg-amber-50/90 border-amber-300 hover:border-amber-400';
+  }
+  if (status === 'booked') {
+    return 'bg-rose-50/85 border-rose-300 hover:border-rose-400';
+  }
+  return 'bg-white border-slate-200 hover:border-slate-300';
 };
 
 const PaginBtn = ({ label, onClick, disabled, active }) => (
@@ -69,9 +101,55 @@ export default function Tracking() {
   const [amountPaid, setAmountPaid] = useState('');
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadTarget, setDownloadTarget] = useState(null);
+  const [filterContacted, setFilterContacted] = useState('');
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [selectedContactBooking, setSelectedContactBooking] = useState(null);
+  const [contactNote, setContactNote] = useState('');
   const ordersPerPage = 12;
   const amountPaidRef = useRef(null);
   const transactionIdRef = useRef(null);
+
+  const handleContactClick = (booking) => {
+    setSelectedContactBooking(booking);
+    setContactNote(booking.contacted_note || 'Call again');
+    setShowContactModal(true);
+  };
+
+  const handleSaveContact = async (id, isContacted, note) => {
+    try {
+      const cleanNote = note ? note.trim() : null;
+      await axios.put(`${API_BASE_URL}/api/tracking/bookings/${id}/contacted`, {
+        contacted: isContacted,
+        contacted_note: cleanNote,
+      });
+
+      setBookings((prev) =>
+        prev.map((booking) =>
+          booking.id === id
+            ? {
+                ...booking,
+                contacted: isContacted,
+                contacted_note: isContacted ? cleanNote : null,
+                contacted_at: isContacted ? (booking.contacted_at || new Date().toISOString()) : null,
+              }
+            : booking
+        )
+      );
+
+      setShowContactModal(false);
+      setSelectedContactBooking(null);
+      setContactNote('');
+      toast.success(isContacted ? "Contacted status & note saved" : "Contact status reset", {
+        position: "top-center",
+        autoClose: 3500,
+      });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update contact status', {
+        position: "top-center",
+        autoClose: 4000,
+      });
+    }
+  };
 
   useEffect(() => {
     if (showDetailsModal) {
@@ -370,7 +448,7 @@ export default function Tracking() {
   };
 
   const filteredBookings = bookings.filter((booking) => {
-    const matchesSearch = ['customer_name', 'order_id', 'total', 'customer_type'].some((key) =>
+    const matchesSearch = ['customer_name', 'order_id', 'total', 'customer_type', 'contacted_note'].some((key) =>
       booking[key]?.toString().toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -380,7 +458,14 @@ export default function Tracking() {
       matchesDate = bookingISTDate === filterDate;
     }
 
-    return matchesSearch && matchesDate;
+    let matchesContacted = true;
+    if (filterContacted === 'contacted') {
+      matchesContacted = Boolean(booking.contacted);
+    } else if (filterContacted === 'not_contacted') {
+      matchesContacted = !booking.contacted;
+    }
+
+    return matchesSearch && matchesDate && matchesContacted;
   });
 
   const formatDate = (dateStr) => {
@@ -404,9 +489,24 @@ export default function Tracking() {
       <div className="hundred:ml-64 mobile:ml-0 mobile:px-3 w-auto">
         <div className="mx-auto px-6 py-8 w-full">
 
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Tracking</h1>
-            <p className="text-slate-400 mt-1.5 text-sm">Monitor and manage all bookings</p>
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Tracking</h1>
+              <p className="text-slate-400 mt-1 text-sm">Monitor and manage all bookings</p>
+            </div>
+            {/* Color Guide Note on Top Right */}
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl px-3.5 py-2 text-xs text-slate-600 flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+              <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Card Colors:</span>
+              <span className="inline-flex items-center gap-1 font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span> Booked (Light Red)
+              </span>
+              <span className="inline-flex items-center gap-1 font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span> Contacted (Yellow)
+              </span>
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Paid (Green)
+              </span>
+            </div>
           </div>
 
           {error && (
@@ -444,6 +544,14 @@ export default function Tracking() {
                   className={selectStyles}
                 />
               </div>
+              <div className="flex-1 min-w-48">
+                <label className="block text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1.5">Contact Status</label>
+                <select value={filterContacted} onChange={(e) => setFilterContacted(e.target.value)} className={selectStyles}>
+                  <option value="">All Contact Status</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="not_contacted">Not Contacted</option>
+                </select>
+              </div>
               <div className="flex-1 min-w-64">
                 <label className="block text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1.5">Search</label>
                 <div className="relative">
@@ -463,13 +571,23 @@ export default function Tracking() {
           {currentOrders.length > 0 ? (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 mb-6">
               {currentOrders.map((booking) => (
-                <div key={booking.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+                <div
+                  key={booking.id}
+                  className={`border rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${getTrackingCardStyles(booking)}`}
+                >
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div className="text-xs font-extrabold text-indigo-500 tracking-wide">{booking.order_id}</div>
                       <div className="text-base font-bold text-slate-800 mt-0.5">{booking.customer_name}</div>
                     </div>
-                    <StatusBadge status={booking.status} />
+                    <div className="flex flex-col items-end gap-1.5">
+                      <StatusBadge status={booking.status} />
+                      <ContactBadge
+                        contacted={booking.contacted}
+                        note={booking.contacted_note}
+                        onClick={() => handleContactClick(booking)}
+                      />
+                    </div>
                   </div>
 
                   <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 mb-4">
@@ -500,9 +618,31 @@ export default function Tracking() {
                   )}
 
                   {booking.mobile_number && (
-                    <a href={`tel:${booking.mobile_number}`} className="block text-xs font-semibold text-indigo-500 hover:text-indigo-700 mb-4 transition-colors">
+                    <a href={`tel:${booking.mobile_number}`} className="block text-xs font-semibold text-indigo-500 hover:text-indigo-700 mb-3 transition-colors">
                       📞 {booking.mobile_number}
                     </a>
+                  )}
+
+                  {booking.contacted && booking.contacted_note && (
+                    <div className="bg-amber-50/90 border border-amber-200/80 rounded-xl px-3 py-2 mb-3.5 flex items-start gap-2">
+                      <FaCommentDots className="text-amber-500 text-xs mt-0.5 shrink-0" />
+                      <div className="text-xs text-slate-700 leading-snug flex-1">
+                        <span className="font-bold text-amber-900">Note: </span>
+                        <span className="font-medium text-slate-800">{booking.contacted_note}</span>
+                        {booking.contacted_at && (
+                          <span className="block text-[10px] text-slate-400 mt-0.5">
+                            {new Date(booking.contacted_at).toLocaleString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   )}
 
                   {booking.status?.toLowerCase() === 'booked' && (
@@ -519,6 +659,30 @@ export default function Tracking() {
                       </select>
                     </div>
                   )}
+
+                  <div className="mb-3">
+                    <button
+                      type="button"
+                      onClick={() => handleContactClick(booking)}
+                      className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all duration-150 border ${
+                        booking.contacted
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
+                          : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-100"
+                      }`}
+                    >
+                      <FaPhoneAlt className="text-xs" />
+                      <span>Contacted</span>
+                      {booking.contacted ? (
+                        <span className="text-[10px] font-semibold bg-emerald-200/80 text-emerald-800 px-1.5 py-0.5 rounded-md ml-1">
+                          ✓ Saved (Edit Note)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-normal bg-indigo-500 text-white px-1.5 py-0.5 rounded-md ml-1">
+                          Mark with Note
+                        </span>
+                      )}
+                    </button>
+                  </div>
 
                   <div className="flex gap-2">
                     <button
@@ -672,6 +836,96 @@ export default function Tracking() {
           <div className="flex gap-2.5 justify-center">
             <button onClick={() => setShowDeleteModal(false)} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 font-semibold text-sm hover:bg-slate-50">Keep It</button>
             <button onClick={handleDeleteBooking} className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-red-500 to-red-400 hover:from-red-600">Yes, Delete</button>
+          </div>
+        </ModalWrapper>
+      )}
+
+      {showContactModal && selectedContactBooking && (
+        <ModalWrapper>
+          <div className="text-center mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-2 text-lg">
+              <FaPhoneAlt />
+            </div>
+            <h2 className="text-lg font-extrabold text-slate-800">
+              {selectedContactBooking.contacted ? "Edit Contact Note" : "Mark as Contacted"}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {selectedContactBooking.customer_name} ({selectedContactBooking.order_id})
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                Quick Options
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Call again",
+                  "Confirmed Order",
+                  "Ringing / No Answer",
+                  "Follow up later",
+                  "Wrong Number",
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setContactNote(preset)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                      contactNote === preset
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-slate-50 text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50"
+                    }`}
+                  >
+                    {preset === "Call again" ? "📞 " : ""}{preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                Note / Remarks
+              </label>
+              <textarea
+                value={contactNote}
+                onChange={(e) => setContactNote(e.target.value)}
+                placeholder="e.g. Call again, customer requested callback..."
+                rows={3}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-800 bg-slate-50 outline-none focus:border-indigo-400 transition-colors resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 mt-5">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowContactModal(false);
+                  setSelectedContactBooking(null);
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveContact(selectedContactBooking.id, true, contactNote)}
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-br from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-md shadow-indigo-100 transition-all"
+              >
+                Save & Confirm
+              </button>
+            </div>
+            {selectedContactBooking.contacted && (
+              <button
+                type="button"
+                onClick={() => handleSaveContact(selectedContactBooking.id, false, '')}
+                className="w-full py-1.5 text-xs text-red-500 hover:text-red-700 font-semibold transition-colors"
+              >
+                Mark as Not Contacted (Reset)
+              </button>
+            )}
           </div>
         </ModalWrapper>
       )}
