@@ -1,709 +1,3045 @@
-import { useState, useEffect, useRef, useMemo } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sparkles, Rocket, Volume2, Bomb, Disc, CloudSun,
-  Heart, SmilePlus, Clock, ArrowRight, Gift, Copy,
-  ShoppingCart, X, AlertTriangle
-} from "lucide-react"
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
-import { useInView } from "react-intersection-observer"
-import { FaInfoCircle, FaArrowLeft, FaArrowRight } from "react-icons/fa"
-import Navbar from "../Component/Navbar"
-import "../App.css"
-import { API_BASE_URL } from "../../Config"
-import about from "../spc.jpg"
-import need from "../spc.jpg"
+  FaPlus,
+  FaMinus,
+  FaArrowLeft,
+  FaArrowRight,
+  FaInfoCircle,
+  FaExpand,
+  FaCompress,
+  FaDownload,
+} from "react-icons/fa";
+import {
+  ShoppingCart,
+  Search,
+  Filter,
+  X,
+  Download,
+  Gift,
+  Tag,
+  ArrowRight,
+} from "lucide-react";
+import Navbar from "../Component/Navbar";
+import { API_BASE_URL } from "../../Config";
+import RocketLoader from "../Component/RocketLoader";
+import ToasterNotification from "../Component/ToasterNotification";
+import SuccessAnimation from "../Component/SuccessAnimation";
+import ModernCarousel from "../Component/ModernCarousel";
+import LoadingSpinner from "../Component/LoadingSpinner";
+import jsPDF from "jspdf";
+import "../App.css";
+import need from "../spc.jpg";
 
 const C = {
-  void:       "#030712", 
-  glass:      "rgba(15, 23, 42, 0.45)",
-  glassL:     "rgba(30, 41, 59, 0.65)",
-  gold:       "#f59e0b", 
-  goldL:      "#fef08a",
-  neonCyan:   "#06b6d4",
+  void: "#030712",
+  glass: "rgba(15, 23, 42, 0.45)",
+  glassL: "rgba(30, 41, 59, 0.65)",
+  gold: "#f59e0b",
+  goldL: "#fef08a",
+  green: "#10b981",
+  neonCyan: "#06b6d4",
   neonPurple: "#8b5cf6",
-  ink:        "#f8fafc", 
-  slate:      "#cbd5e1", 
-  muted:      "#64748b", 
-  border:     "rgba(255, 255, 255, 0.07)", 
-  borderH:    "rgba(255, 255, 255, 0.18)",
-}
+  ink: "#f8fafc",
+  slate: "#cbd5e1",
+  muted: "#64748b",
+  border: "rgba(255, 255, 255, 0.07)",
+  borderH: "rgba(255, 255, 255, 0.18)",
+};
+const MIN_PURCHASE = 2000;
 
-const GlobalStyles = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400&family=Syne:wght@700;800&display=swap');
-    *, *::before, *::after { box-sizing: border-box; }
-    body { background: #030712; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-font-smoothing: antialiased; }
-    
-    .display { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1.15; letter-spacing: -0.03em; }
-    .serif { font-family: 'Lora', serif; }
-    .label { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0.28em; text-transform: uppercase; color: #f59e0b; }
-    
-    .cosmic-mesh { 
-      background-image: 
-        radial-gradient(at 10% 15%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
-        radial-gradient(at 90% 85%, rgba(139, 92, 246, 0.05) 0px, transparent 50%),
-        radial-gradient(at 50% 50%, rgba(245, 158, 11, 0.02) 0px, transparent 70%);
-    }
-    
-    .glassmorphic {
-      background: rgba(15, 23, 42, 0.45);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-    }
-    
-    .pill { 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 8px; 
-      background: rgba(245, 158, 11, 0.08); 
-      color: #f59e0b; 
-      font-family: 'Plus Jakarta Sans', sans-serif; 
-      font-weight: 700; 
-      font-size: 12px; 
-      letter-spacing: 0.05em; 
-      text-transform: uppercase; 
-      padding: 6px 16px; 
-      border-radius: 100px; 
-      border: 1px solid rgba(245, 158, 11, 0.15); 
-    }
-    
-    .btn-primary { 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 12px; 
-      background: linear-gradient(135deg, #f59e0b, #d97706); 
-      color: #030712; 
-      font-family: 'Plus Jakarta Sans', sans-serif; 
-      font-weight: 700; 
-      font-size: 15px; 
-      padding: 16px 36px; 
-      border-radius: 12px; 
-      border: none; 
-      cursor: pointer; 
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
-      box-shadow: 0 8px 30px rgba(245, 158, 11, 0.25); 
-    }
-    .btn-primary:hover { 
-      transform: translateY(-3px); 
-      box-shadow: 0 12px 35px rgba(245, 158, 11, 0.4); 
-      background: linear-gradient(135deg, #fef08a, #f59e0b); 
-    }
-    
-    .btn-outline { 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 12px; 
-      background: rgba(255, 255, 255, 0.03); 
-      color: #f8fafc; 
-      font-family: 'Plus Jakarta Sans', sans-serif; 
-      font-weight: 700; 
-      font-size: 14px; 
-      padding: 14px 32px; 
-      border-radius: 12px; 
-      border: 1px solid rgba(255, 255, 255, 0.1); 
-      cursor: pointer; 
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
-    }
-    .btn-outline:hover { 
-      background: rgba(255, 255, 255, 0.08); 
-      border-color: #f59e0b; 
-      color: #f59e0b;
-      transform: translateY(-2px); 
-    }
-    
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #030712; }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 20px; }
-    ::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
-    .hscroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.1) #030712; }
-  `}</style>
-)
-
-const categories = [
-  { name: "Sparklers",             icon: Sparkles,  description: "Cascading golden showers for intimate celebrations" },
-  { name: "Rockets",               icon: Rocket,    description: "Sky-piercing bursts of aerial brilliance" },
-  { name: "Single Sound Crackers", icon: Volume2,   description: "Crisp festive reports with traditional character" },
-  { name: "Atom Bombs",            icon: Bomb,      description: "Earth-shaking percussion for grand occasions" },
-  { name: "Ground Chakkars",       icon: Disc,      description: "Whirling rings of light at ground level" },
-  { name: "Sky Shots",             icon: CloudSun,  description: "Magnificent aerial canvases across the night sky" },
-]
-const statsData = [
-  { label: "Customer Satisfaction", value: 100, icon: Heart,     suffix: "%" },
-  { label: "Products Available",     value: 200, icon: Sparkles,  suffix: "+" },
-  { label: "Happy Clients",          value: 500, icon: SmilePlus, suffix: "+" },
-  { label: "Years of Experience",   value: 15,  icon: Clock,     suffix: "+" },
-]
-const navLinks = ["Home", "About Us", "Price List", "Safety Tips", "Contact Us"]
-
-const genPositions = (count) => {
-  const positions = []
-  const sw = typeof window !== "undefined" ? window.innerWidth  : 1920
-  const sh = typeof window !== "undefined" ? window.innerHeight : 1080
-  if (sw < 768) {
-    for (let i = 0; i < count; i++) positions.push({ x: 0, y: -sh * 0.2 + i * 120 })
-  } else {
-    const pad = 150, mx = sw - pad * 2, my = sh - pad * 2
-    for (let i = 0; i < count; i++) {
-      let p, ok = false, t = 0
-      while (!ok && t < 50) { p = { x: Math.random() * mx - mx / 2, y: Math.random() * my - my / 2 }; ok = positions.every(e => Math.hypot(p.x - e.x, p.y - e.y) >= 200); t++ }
-      if (p) positions.push(p)
-    }
+const GLOBAL_STYLES_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400&family=Syne:wght@700;800&display=swap');
+  *, *::before, *::after { box-sizing: border-box; }
+  body { background: #030712; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+  .display { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1.15; letter-spacing: -0.03em; }
+  .serif { font-family: 'Lora', serif; }
+  .label { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0.28em; text-transform: uppercase; color: #f59e0b; }
+  .cosmic-mesh { 
+    background-image: 
+      radial-gradient(at 10% 15%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
+      radial-gradient(at 90% 85%, rgba(139, 92, 246, 0.05) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(245, 158, 11, 0.02) 0px, transparent 70%);
   }
-  return positions
-}
-
-const LOADER_PALETTES = [
-  ["rgb(245,158,11)", "rgb(217,119,6)", "rgb(254,240,138)", "rgb(255,255,255)"],
-  ["rgb(6,182,212)", "rgb(8,145,178)", "rgb(165,243,252)", "rgb(255,255,255)"],
-  ["rgb(139,92,246)", "rgb(109,40,217)", "rgb(216,180,254)", "rgb(255,255,255)"],
-]
-const ROCKET_SCHEDULE = [400, 1200, 2100, 3000, 3900]
-const LOADER_DURATION = 4800
-
-class LoaderParticle {
-  constructor(x, y, color) {
-    this.x = x; this.y = y
-    const angle = Math.random() * Math.PI * 2
-    const speed = 2 + Math.random() * 5
-    this.vx = Math.cos(angle) * speed
-    this.vy = Math.sin(angle) * speed - 0.5
-    this.alpha   = 1
-    this.radius  = 1.5 + Math.random() * 2
-    this.color   = color
-    this.decay   = 0.012 + Math.random() * 0.014
-    this.gravity = 0.06
-    this.trail   = []
+  .glassmorphic {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
   }
-  update() {
-    this.trail.push({ x: this.x, y: this.y, a: this.alpha })
-    if (this.trail.length > 6) this.trail.shift()
-    this.vy += this.gravity
-    this.x  += this.vx
-    this.y  += this.vy
-    this.alpha -= this.decay
-    this.vx *= 0.97
+  .pill { display: inline-flex; align-items: center; gap: 8px; background: rgba(245, 158, 11, 0.08); color: #f59e0b; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 16px; border-radius: 100px; border: 1px solid rgba(245, 158, 11, 0.15); }
+  .pill-green { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
+  .pill-brand { background: rgba(6, 182, 212, 0.1); color: #06b6d4; border-color: rgba(6, 182, 212, 0.2); }
+  .btn-primary { display: inline-flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #030712; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 15px; padding: 16px 36px; border-radius: 12px; border: none; cursor: pointer; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 8px 30px rgba(245, 158, 11, 0.25); }
+  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 35px rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, #fef08a, #f59e0b); }
+  .btn-outline { display: inline-flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.03); color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; padding: 14px 32px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+  .btn-outline:hover { background: rgba(255, 255, 255, 0.08); border-color: #f59e0b; color: #f59e0b; transform: translateY(-2px); }
+  .type-chip { padding: 12px 24px; border-radius: 14px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px; white-space: nowrap; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); border: 1px solid rgba(255,255,255,0.06); background: rgba(15, 23, 42, 0.4); color: #64748b; }
+  .type-chip:hover { border-color: rgba(255,255,255,0.15); color: #cbd5e1; }
+  .type-chip.active { background: #f59e0b; color: #030712; border-color: #f59e0b; box-shadow: 0 8px 20px rgba(245, 158, 11, 0.2); }
+  .brand-chip { padding: 10px 20px; border-radius: 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px; white-space: nowrap; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); border: 1px solid rgba(255,255,255,0.06); background: rgba(15, 23, 42, 0.4); color: #64748b; }
+  .brand-chip:hover { border-color: rgba(255,255,255,0.15); color: #cbd5e1; }
+  .brand-chip.active { background: #06b6d4; color: #030712; border-color: #06b6d4; box-shadow: 0 8px 20px rgba(6, 182, 212, 0.2); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #030712; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 20px; }
+  ::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+  .hscroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.1) #030712; }
+  .hscroll::-webkit-scrollbar { height: 6px; }
+  .hscroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 20px; }
+  .hscroll::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+  @keyframes pipelineShimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
   }
-  draw(ctx) {
-    for (let i = 0; i < this.trail.length; i++) {
-      const t  = this.trail[i]
-      const ta = t.a * (i / this.trail.length) * 0.3
-      ctx.beginPath()
-      ctx.arc(t.x, t.y, this.radius * 0.5, 0, Math.PI * 2)
-      ctx.fillStyle = this.color.replace(")", `,${ta})`).replace("rgb", "rgba")
-      ctx.fill()
-    }
-    ctx.beginPath()
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2)
-    ctx.fillStyle = this.color.replace(")", `,${this.alpha})`).replace("rgb", "rgba")
-    ctx.fill()
+  .pipeline-fill {
+    background: linear-gradient(90deg, #f59e0b 0%, #fef08a 50%, #f59e0b 100%);
+    background-size: 200% auto;
+    animation: pipelineShimmer 2s linear infinite;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
-}
-
-class LoaderRocket {
-  constructor(W, H) {
-    this.x  = W * 0.3 + Math.random() * W * 0.4
-    this.y  = H + 10
-    this.tx = W * 0.2 + Math.random() * W * 0.6
-    this.ty = H * 0.15 + Math.random() * H * 0.3
-    const dist  = Math.hypot(this.tx - this.x, this.ty - this.y)
-    const speed = 8
-    this.vx    = (this.tx - this.x) / dist * speed
-    this.vy    = (this.ty - this.y) / dist * speed
-    this.trail = []
-    this.burst = false
+  .pipeline-fill-complete {
+    background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #10b981 100%);
+    background-size: 200% auto;
+    animation: pipelineShimmer 2s linear infinite;
   }
-  update(particles) {
-    if (this.burst) return
-    this.trail.push({ x: this.x, y: this.y })
-    if (this.trail.length > 12) this.trail.shift()
-    this.x += this.vx
-    this.y += this.vy
-    if (this.y <= this.ty) {
-      this.burst = true
-      const pal   = LOADER_PALETTES[Math.floor(Math.random() * LOADER_PALETTES.length)]
-      const count = 70 + Math.floor(Math.random() * 20)
-      for (let i = 0; i < count; i++)
-        particles.push(new LoaderParticle(this.x, this.y, pal[Math.floor(Math.random() * pal.length)]))
-    }
-  }
-  draw(ctx) {
-    if (this.burst) return
-    this.trail.forEach((t, i) => {
-      const a = (i / this.trail.length) * 0.4
-      ctx.beginPath()
-      ctx.arc(t.x, t.y, 1.5, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(245,158,11,${a})`
-      ctx.fill()
-    })
-    ctx.beginPath()
-    ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2)
-    ctx.fillStyle = "#fff"
-    ctx.fill()
-  }
-}
+`;
 
-function IntroLoader({ onComplete }) {
-  const canvasRef   = useRef(null)
-  const rafRef      = useRef(null)
-  const startRef    = useRef(null)
-  const rocketsRef  = useRef([])
-  const particlesRef = useRef([])
+const roundPrice = (v) => Math.round(parseFloat(v) || 0);
+const formatPercentage = (v) => Math.round(Number.parseFloat(v)).toString();
+const formatPrice = (price) => String(roundPrice(price));
+const capitalize = (str) =>
+  str ? str.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "";
+const serialSort = (a, b) =>
+  new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }).compare(
+    a.serial_number,
+    b.serial_number
+  );
 
-  const [progress, setProgress] = useState(0)
-  const [ready,    setReady   ] = useState(false)
-  const [exiting,  setExiting ] = useState(false)
+const ORDERED_TYPES = [
+  "One sound crackers",
+  "One Sound Crackers Premium",
+  "Chorsa and Gaints",
+  "Delux Crackers",
+  "Bijili Crackers",
+  "Bombs",
+  "Paper Bombs",
+  "Twinkling Star",
+  "Rockets",
+  "Kids Special",
+  "Matches",
+  "Flower Pots",
+  "Colour Fountain Mini",
+  "Cololur Fountain Mega",
+  "Crackling Fountain",
+  "Ground Chakkars",
+  "New Arrivals",
+  "Vip Special Crackers",
+  "Sparklers",
+  "Premium Sparklers",
+  "Sky Shot Mini",
+  "Sky Shot Single",
+  "Grand Sky Shot",
+  "Fun And Crazy Sky Shot",
+  "Repeating Shots",
+  "Multi Shots",
+  "Comets Sky Shots",
+  "Premium Set Out",
+  "Fancy pencil",
+  "Fountain and Fancy Novelties",
+  "Guns and Caps",
+  "Gift Boxes",
+];
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const ctx    = canvas.getContext("2d")
-    let W, H
-
-    const resize = () => {
-      W = canvas.width  = canvas.offsetWidth
-      H = canvas.height = canvas.offsetHeight
-    }
-    resize()
-    window.addEventListener("resize", resize)
-
-    let scheduleIdx = 0
-
-    const tick = (ts) => {
-      if (!startRef.current) startRef.current = ts
-      const elapsed = ts - startRef.current
-
-      ctx.fillStyle = "rgba(3,7,18,0.2)"
-      ctx.fillRect(0, 0, W, H)
-
-      while (scheduleIdx < ROCKET_SCHEDULE.length && elapsed >= ROCKET_SCHEDULE[scheduleIdx]) {
-        rocketsRef.current.push(new LoaderRocket(W, H))
-        scheduleIdx++
-      }
-
-      rocketsRef.current.forEach(r => { r.update(particlesRef.current); r.draw(ctx) })
-
-      for (let i = particlesRef.current.length - 1; i >= 0; i--) {
-        particlesRef.current[i].update()
-        particlesRef.current[i].draw(ctx)
-        if (particlesRef.current[i].alpha <= 0) particlesRef.current.splice(i, 1)
-      }
-
-      const p = Math.min(100, Math.round((elapsed / LOADER_DURATION) * 100))
-      setProgress(p)
-      if (p >= 100) setReady(true)
-
-      rafRef.current = requestAnimationFrame(tick)
-    }
-
-    rafRef.current = requestAnimationFrame(tick)
-    return () => {
-      cancelAnimationFrame(rafRef.current)
-      window.removeEventListener("resize", resize)
-    }
-  }, [])
-
-  const exit = () => {
-    setExiting(true)
-    setTimeout(() => { onComplete?.() }, 700)
-  }
-
-  useEffect(() => {
-    if (!ready) return
-    const t = setTimeout(exit, 1000)
-    return () => clearTimeout(t)
-  }, [ready])
+const MinPurchasePipeline = memo(({ subtotalRaw, onCartOpen, isUnlocked }) => {
+  const progress = Math.min((subtotalRaw / MIN_PURCHASE) * 100, 100);
+  const remaining = Math.max(0, MIN_PURCHASE - subtotalRaw);
 
   return (
-    <AnimatePresence>
-      {!exiting && (
-        <motion.div
-          key="intro-loader"
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
+    <motion.div
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 26 }}
+      className="glassmorphic"
+      style={{
+        position: "fixed",
+        top: 12,
+        left: 12,
+        right: 12,
+        margin: "0 auto",
+        width: "auto",
+        maxWidth: "42rem",
+        borderRadius: "16px",
+        zIndex: 55,
+        color: C.ink,
+        padding: "0.85rem 1.25rem",
+        boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
+        cursor: isUnlocked ? "pointer" : "default",
+      }}
+      onClick={isUnlocked ? onCartOpen : undefined}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "0.6rem",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", minWidth: 0, flex: 1 }}>
+          {isUnlocked ? (
+            <span
+              className="display"
+              style={{
+                fontSize: "clamp(13px, 3.5vw, 16px)",
+                color: C.gold,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              🎉 Open Cart
+            </span>
+          ) : (
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: "clamp(12px, 3.2vw, 15px)",
+                color: C.slate,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              Add <span style={{ color: C.gold }}>₹{formatPrice(remaining)}</span> more
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <span style={{ fontWeight: 800, fontSize: "clamp(14px, 3.8vw, 18px)", color: C.ink }}>
+            ₹{formatPrice(subtotalRaw)}
+            <span style={{ fontSize: "clamp(10px, 2.5vw, 12px)", color: C.muted }}>
+              /₹{MIN_PURCHASE}
+            </span>
+          </span>
+          {isUnlocked && (
+            <span
+              style={{
+                borderRadius: "6px",
+                background: C.gold,
+                color: C.void,
+                padding: "3px 8px",
+                fontSize: "11px",
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Cart →
+            </span>
+          )}
+        </div>
+      </div>
+      <div
+        style={{
+          height: 4,
+          background: "rgba(255,255,255,0.05)",
+          borderRadius: 100,
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        <div
+          className={isUnlocked ? "pipeline-fill pipeline-fill-complete" : "pipeline-fill"}
           style={{
-            position: "fixed", inset: 0, zIndex: 9999,
-            background: "#030712",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            overflow: "hidden",
+            height: "100%",
+            width: `${progress}%`,
+            borderRadius: 100,
           }}
-        >
-          <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}/>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="glassmorphic"
-            style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "3rem", borderRadius: "24px", maxWidth: "480px", width: "90%" }}
-          >
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
-              color: "#f59e0b", fontSize: 12, fontWeight: 800,
-              letterSpacing: "0.25em", textTransform: "uppercase",
-              padding: "6px 18px", borderRadius: 100, marginBottom: 28,
-            }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              Sivakasi · Est. 2009
-            </div>
-
-            <h1 className="display" style={{
-              fontSize: "30px", color: "#f8fafc",
-              marginBottom: 16,
-            }}>
-              Sri Palaniyappa<br/>
-              <span style={{ color: "#f59e0b" }}>Crackers</span>
-            </h1>
-
-            <p className="serif" style={{
-              fontStyle: "italic", fontSize: 18, color: "#cbd5e1",
-              marginBottom: 44, opacity: 0.8,
-            }}>
-              "Every burst of light is a memory made"
-            </p>
-
-            <div style={{
-              width: "100%", height: 3, background: "rgba(255,255,255,0.05)",
-              borderRadius: 3, margin: "0 auto 16px", overflow: "hidden",
-            }}>
-              <div style={{
-                height: "100%", background: "linear-gradient(90deg, #d97706, #f59e0b)",
-                width: progress + "%", transition: "width 0.05s linear",
-              }}/>
-            </div>
-            <div style={{
-              fontSize: 13, color: "#64748b",
-              fontWeight: 700, letterSpacing: "0.15em",
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-            }}>
-              {progress < 100 ? progress + "%" : "Aura Loaded"}
-            </div>
-
-            <AnimatePresence>
-              {ready && (
-                <motion.button
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={exit}
-                  className="btn-primary"
-                  style={{ marginTop: 28, width: "100%", justifyContent: "center" }}
-                >
-                  Enter the Store
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-}
-
-const Firework = ({ delay = 0, startPosition, endPosition, burstPosition, colors, onBurstComplete, promocode, onCopyPromo, copiedPromos }) => {
-  const sw = typeof window !== "undefined" ? window.innerWidth : 1920
-  useEffect(() => {
-    if (onBurstComplete) { const t = setTimeout(onBurstComplete, delay + 3000); return () => clearTimeout(t) }
-  }, [delay, onBurstComplete])
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <motion.div className="absolute w-2.5 h-8 rounded-full bg-gradient-to-b"
-        style={{ left: startPosition.x, top: startPosition.y, from: colors.primary, to: colors.secondary, boxShadow: `0 0 30px ${colors.primary}` }}
-        animate={{ x: [0, endPosition.x - startPosition.x], y: [0, endPosition.y - startPosition.y], opacity: [1, 1, 0], scale: [1, 1.1, 0.5] }}
-        transition={{ duration: 1.6, delay, ease: "easeOut" }}
-      />
-      <motion.div className="absolute" style={{ left: burstPosition.x, top: burstPosition.y, transform: "translate(-50%,-50%)" }}
-        initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.7, 0] }} transition={{ duration: 4, delay: delay + 1.6 }}>
-        {Array.from({ length: 30 }).map((_, i) => {
-          const a = i * 12 * Math.PI / 180, d = sw < 768 ? sw * 0.1 : sw * 0.15
-          return <motion.div key={`p${i}`} className="absolute w-3 h-3 rounded-full"
-            style={{ background: colors.burst[i % colors.burst.length], boxShadow: `0 0 20px ${colors.burst[i % colors.burst.length]}` }}
-            animate={{ x: [0, Math.cos(a) * d * 0.4, Math.cos(a) * d], y: [0, Math.sin(a) * d * 0.4, Math.sin(a) * d], opacity: [1, 0.8, 0], scale: [1, 1.3, 0] }}
-            transition={{ duration: 3, delay: delay + 1.6, ease: "easeOut" }} />
-        })}
-      </motion.div>
-      {promocode && !copiedPromos.includes(promocode.code) && (
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: delay + 3.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute pointer-events-auto p-6 rounded-2xl text-center glassmorphic"
-          style={{ left: burstPosition.x, top: burstPosition.y, transform: "translate(-50%,-50%)", boxShadow: "0 30px 60px rgba(0,0,0,0.6)", zIndex: 45, minWidth: sw < 768 ? "250px" : "300px" }}>
-          <div className="flex flex-col items-center gap-2">
-            <div className="label text-xs">Vanguard Pass</div>
-            <div className="font-extrabold text-3xl tracking-tight" style={{ color: C.ink }}>{promocode.code}</div>
-            <div className="px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase mt-2 bg-amber-500/10 border border-amber-500/20" style={{ color: C.gold }}>{promocode.discount}% Voucher Issued</div>
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              onClick={() => { navigator.clipboard.writeText(promocode.code); onCopyPromo(promocode.code) }}
-              className="mt-4 w-full py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-bold" style={{ background: C.gold, color: C.void }}>
-              <Copy className="w-4 h-4" /> Redeem Code
-            </motion.button>
-          </div>
-        </motion.div>
-      )}
-    </div>
-  )
-}
-
-const RocketBadgeAnimation = ({ isActive, onComplete, promocodes, onCopyPromo, copiedPromos }) => {
-  const [fw, setFw] = useState([])
-  const [done, setDone] = useState(false)
-  const [showX, setShowX] = useState(false)
-  const [triggered, setTriggered] = useState(false)
-  const [positions, setPositions] = useState([])
-  const sw = typeof window !== "undefined" ? window.innerWidth : 1920
-  const sh = typeof window !== "undefined" ? window.innerHeight : 1080
-  const palettes = [
-    { primary: C.gold, secondary: C.goldL, center: C.gold, burst: [C.gold, C.goldL, "#fff"] },
-    { primary: C.neonCyan, secondary: "#fff", center: C.neonCyan, burst: [C.neonCyan, "#fff"] },
-    { primary: C.neonPurple, secondary: "#fff", center: C.neonPurple, burst: [C.neonPurple, "#fff"] },
-  ]
-  useEffect(() => { if (promocodes.length > 0) setPositions(genPositions(promocodes.length)) }, [promocodes.length])
-  useEffect(() => {
-    if (isActive && promocodes.length > 0 && !triggered) { setTriggered(true); fire(0) }
-  }, [isActive, promocodes.length, triggered])
-  const fire = idx => {
-    if (idx >= promocodes.length) { setTimeout(() => { setDone(true); onComplete() }, 1000); return }
-    const pos = positions[idx] || { x: 0, y: 0 }, burst = { x: sw / 2 + pos.x, y: sh / 2 + pos.y }
-    setFw(p => [...p, { index: idx, startPosition: { x: sw / 2, y: sh - 100 }, endPosition: burst, burstPosition: burst, colors: palettes[idx % palettes.length], promocode: promocodes[idx] }])
-    if (idx === 0) setShowX(true)
-    setTimeout(() => fire(idx + 1), 3000)
-  }
-  const closeAll = () => { setFw([]); setShowX(false); promocodes.forEach(p => { if (!copiedPromos.includes(p.code)) onCopyPromo(p.code) }) }
-  return (
-    <AnimatePresence>
-      {isActive && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 pointer-events-none z-40 bg-void/50 backdrop-blur-md">
-          {showX && (
-            <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={closeAll}
-              className="fixed top-8 right-8 z-50 pointer-events-auto w-12 h-12 rounded-xl flex items-center justify-center glassmorphic shadow-2xl">
-              <X className="w-5 h-5" />
-            </motion.button>
-          )}
-          {fw.map(f => (
-            <Firework key={`fw-${f.index}`} delay={0}
-              startPosition={f.startPosition} endPosition={f.endPosition}
-              burstPosition={f.burstPosition} colors={f.colors}
-              promocode={f.promocode} onCopyPromo={onCopyPromo} copiedPromos={copiedPromos} />
-          ))}
-          {done && (
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-              className="fixed bottom-8 right-8 z-50 pointer-events-auto">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={() => window.location.href = "/price-list"} className="btn-primary">
-                <ShoppingCart className="w-4 h-4" /> Browse Platform <ArrowRight className="w-4 h-4" />
-              </motion.button>
-            </motion.div>
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-}
-
-const ModernCarousel = ({ media }) => {
-  const [idx, setIdx] = useState(0)
-  const tx = useRef(null)
-  const items = useMemo(() => {
-    const raw = media && typeof media === "string" ? JSON.parse(media) : Array.isArray(media) ? media : []
-    return raw.sort((a, b) => {
-      const pri = s => s.startsWith("data:video/") ? 2 : s.startsWith("data:image/gif") || s.endsWith(".gif") ? 1 : 0
-      return pri(typeof a === "string" ? a : "") - pri(typeof b === "string" ? b : "")
-    })
-  }, [media])
-  const isVid = s => typeof s === "string" && s.startsWith("data:video/")
-  const prev = () => setIdx(i => i === 0 ? items.length - 1 : i - 1)
-  const next = () => setIdx(i => i === items.length - 1 ? 0 : i + 1)
-  if (!items.length) return (
-    <div className="w-full h-64 rounded-2xl mb-6 overflow-hidden flex items-center justify-center border bg-slate-900/40"
-      style={{ borderColor: C.border }}>
-      <img src={need} alt="placeholder" className="object-contain h-full opacity-20" />
-    </div>
-  )
-  return (
-    <div className="relative w-full h-64 rounded-2xl mb-6 overflow-hidden group border"
-      style={{ borderColor: C.border }}
-      onTouchStart={e => { tx.current = e.touches[0].clientX }}
-      onTouchMove={e => { if (!tx.current) return; const d = tx.current - e.touches[0].clientX; if (Math.abs(d) > 50) { d > 0 ? next() : prev(); tx.current = null } }}
-      onTouchEnd={() => { tx.current = null }}>
-      <div className="absolute inset-0 bg-slate-900/60" />
-      <AnimatePresence mode="wait">
-        <motion.div key={idx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="absolute inset-0">
-          {isVid(items[idx])
-            ? <video src={items[idx]} autoPlay muted loop className="w-full h-full object-cover" />
-            : <img src={items[idx] || "/placeholder.svg"} alt="Product" className="w-full h-full object-cover" />}
-        </motion.div>
-      </AnimatePresence>
-      {items.length > 1 && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-t from-void/50 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
-          <button onClick={prev} className="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all border bg-void/40"
-            style={{ borderColor: C.borderH }}>
-            <FaArrowLeft style={{ color: C.gold, fontSize: "11px" }} />
-          </button>
-          <button onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all border bg-void/40"
-            style={{ borderColor: C.borderH }}>
-            <FaArrowRight style={{ color: C.gold, fontSize: "11px" }} />
-          </button>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {items.map((_, i) => (
-              <button key={i} onClick={() => setIdx(i)} className="w-2 h-2 rounded-full transition-all"
-                style={{ background: i === idx ? C.gold : "rgba(255,255,255,0.25)" }} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-const StatCard = ({ icon: Icon, value, label, suffix, delay }) => {
-  const [count, setCount] = useState(0)
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.2 })
-  useEffect(() => {
-    if (inView && count === 0) {
-      let s = 0; const t = setInterval(() => { s += Math.ceil(value / 50); if (s >= value) { setCount(value); clearInterval(t) } else setCount(s) }, Math.max(Math.floor(1200 / value), 30))
-    }
-  }, [inView, value, count])
-  return (
-    <motion.div ref={ref} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay }} viewport={{ once: true }}
-      className="relative overflow-hidden rounded-2xl p-8 glassmorphic"
-      style={{ transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.35)"; e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.background = "rgba(15, 23, 42, 0.7)" }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = ""; e.currentTarget.style.background = C.glass }}>
-      <div className="relative z-10 flex flex-col items-center text-center">
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5 border bg-white/5"
-          style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-          <Icon className="w-6 h-6" style={{ color: C.gold }} />
-        </div>
-        <div className="mb-2 flex items-baseline justify-center">
-          <span className="text-4xl font-black tracking-tight" style={{ color: C.ink }}>{count}</span>
-          <span className="text-2xl font-extrabold ml-0.5" style={{ color: C.gold }}>{suffix}</span>
-        </div>
-        <p className="text-xs font-bold tracking-wider uppercase" style={{ color: C.slate }}>{label}</p>
+        />
       </div>
     </motion.div>
-  )
-}
+  );
+});
+MinPurchasePipeline.displayName = "MinPurchasePipeline";
 
-export default function Home() {
-  const [loaded, setLoaded]             = useState(false)
-  const [banners, setBanners]           = useState([])
-  const [slide, setSlide]               = useState(0)
-  const [fastRunning, setFastRunning]   = useState([])
-  const [selProduct, setSelProduct]     = useState(null)
-  const [showModal, setShowModal]       = useState(false)
-  const [promocodes, setPromocodes]     = useState([])
-  const [showRocket, setShowRocket]     = useState(false)
-  const [copiedPromos, setCopiedPromos] = useState([])
-  const containerRef = useRef(null)
-  const { scrollYProgress } = useScroll({ target: containerRef, offset: ["start start", "end start"] })
-  const heroY       = useTransform(scrollYProgress, [0, 1], ["0%", "12%"])
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
-  const navigate = useNavigate()
+const ProductCard = memo(({ product, count, onAdd, onRemove, onShowDetails, onImageClick }) => {
+  const originalPrice = roundPrice(product.price);
+  const discount = originalPrice * (product.discount / 100);
+  const finalPrice =
+    product.discount > 0 ? formatPrice(originalPrice - discount) : formatPrice(originalPrice);
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/api/banners`).then(r => r.json()).then(d => setBanners(d.filter(b => b.is_active))).catch(console.error)
-    const i = setInterval(() => fetch(`${API_BASE_URL}/api/banners`).then(r => r.json()).then(d => setBanners(d.filter(b => b.is_active))), 1200000)
-    return () => clearInterval(i)
-  }, [])
-  useEffect(() => {
-    const load = () => fetch(`${API_BASE_URL}/api/products`).then(r => r.json()).then(d => setFastRunning(d.data.filter(p => p.fast_running))).catch(console.error)
-    load(); const i = setInterval(load, 5000); return () => clearInterval(i)
-  }, [])
-  useEffect(() => {
-    const load = () => fetch(`${API_BASE_URL}/api/promocodes`).then(r => r.json()).then(d => setPromocodes(d.filter(p => p.is_active !== false))).catch(console.error)
-    load(); const i = setInterval(load, 30000); return () => clearInterval(i)
-  }, [])
-  useEffect(() => {
-    if (banners.length > 1) { const i = setInterval(() => setSlide(p => (p + 1) % banners.length), 5000); return () => clearInterval(i) }
-  }, [banners])
-
-  if (!loaded) return <IntroLoader onComplete={() => setLoaded(true)} />
+  const isSelected = count > 0;
 
   return (
-    <div ref={containerRef} className="min-h-screen overflow-x-hidden cosmic-mesh" style={{ background: C.void, color: C.ink }}>
-      <GlobalStyles />
-      <Navbar />
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="glassmorphic"
+      style={{
+        borderRadius: "20px",
+        overflow: "hidden",
+        transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        borderColor: isSelected ? C.gold : C.border,
+        boxShadow: isSelected ? `0 10px 30px rgba(245, 158, 11, 0.05)` : "none",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = C.gold;
+        e.currentTarget.style.transform = "translateY(-4px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = isSelected ? C.gold : C.border;
+        e.currentTarget.style.transform = "";
+      }}
+    >
+      <div style={{ position: "relative" }}>
+        <ModernCarousel media={product.images} onImageClick={() => onImageClick(product.images)} isCard />
+        <div
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            zIndex: 10,
+          }}
+        >
+          {product.discount > 0 && (
+            <span className="bg-yellow-600/70 w-15 flex justify-center rounded-full p-1 backdrop-blur-md">
+              {formatPercentage(product.discount)}%
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => onShowDetails(product)}
+          className="glassmorphic"
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            zIndex: 10,
+            width: 34,
+            height: 34,
+            borderRadius: "10px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <FaInfoCircle style={{ color: C.gold, fontSize: 16 }} />
+        </button>
+      </div>
+      <div className="p-6">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 6,
+          }}
+        >
+          <p style={{ color: C.gold, fontSize: "12px", fontWeight: 800 }}>
+            {product.serial_number}
+          </p>
+        </div>
 
-      <RocketBadgeAnimation isActive={showRocket} onComplete={() => { }}
-        promocodes={promocodes} onCopyPromo={code => setCopiedPromos(p => [...p, code])} copiedPromos={copiedPromos} />
+        <h3
+          style={{
+            fontWeight: 800,
+            fontSize: "16px",
+            color: C.ink,
+            marginBottom: "0.5rem",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            lineHeight: 1.3,
+          }}
+        >
+          {product.productname}
+        </h3>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "baseline",
+            gap: "6px",
+            marginBottom: "1.25rem",
+          }}
+        >
+          {product.discount > 0 && (
+            <span
+              style={{
+                color: C.muted,
+                fontSize: "13px",
+                textDecoration: "line-through",
+                fontWeight: 600,
+              }}
+            >
+              ₹{formatPrice(originalPrice)}
+            </span>
+          )}
+          <span style={{ fontWeight: 900, fontSize: "20px", color: C.gold }}>
+            ₹{finalPrice}
+          </span>
+          <span style={{ fontSize: "11px", color: C.muted }}>/{product.per}</span>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "6px",
+            width: "100%",
+          }}
+        >
+          <AnimatePresence mode="wait">
+            {isSelected ? (
+              <motion.div
+                key="qty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: C.gold,
+                  borderRadius: "10px",
+                  padding: 4,
+                  width: "100%",
+                }}
+              >
+                <button
+                  onClick={() => onRemove(product)}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "rgba(3,7,18,0.2)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: C.void,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FaMinus style={{ fontSize: 9 }} />
+                </button>
+                <span
+                  style={{
+                    color: C.void,
+                    fontWeight: 800,
+                    fontSize: "14px",
+                    minWidth: "1.5rem",
+                    textAlign: "center",
+                  }}
+                >
+                  {count}
+                </span>
+                <button
+                  onClick={() => onAdd(product)}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "rgba(3,7,18,0.2)",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: C.void,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FaPlus style={{ fontSize: 9 }} />
+                </button>
+              </motion.div>
+            ) : (
+              <motion.button
+                key="add"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => onAdd(product)}
+                className="btn-outline"
+                style={{ justifyContent: "center", padding: "10px", fontSize: "13px", width: "100%" }}
+              >
+                Add to Cart
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+ProductCard.displayName = "ProductCard";
+
+const SPIN_COLORS = [
+  "#1e293b",
+  "#334155",
+  "#0f172a",
+  "#1e1b4b",
+  "#311042",
+  "#4c0519",
+  "#064e3b",
+  "#022c22",
+];
+
+function launchCrackerBurst(originEl) {
+  if (!originEl) return;
+  const rect = originEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  const CRACKER_COLORS = [
+    "#f59e0b",
+    "#06b6d4",
+    "#8b5cf6",
+    "#10b981",
+    "#ec4899",
+    "#3b82f6",
+    "#ef4444",
+    "#f43f5e",
+  ];
+
+  function spawnBurstShell(particleCount, baseSpeed, sparkRadius, delay) {
+    setTimeout(() => {
+      for (let i = 0; i < particleCount; i++) {
+        const el = document.createElement("div");
+        const color = CRACKER_COLORS[Math.floor(Math.random() * CRACKER_COLORS.length)];
+        const size = 4 + Math.random() * 5;
+
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = (0.5 + Math.random() * 0.5) * baseSpeed;
+        const dx = Math.cos(angle) * speed;
+        const dy = Math.sin(angle) * speed - Math.random() * 20;
+
+        const rotation = Math.random() * 360;
+        const duration = 0.5 + Math.random() * 0.5;
+
+        el.style.cssText = `
+          position: fixed;
+          left: ${cx}px;
+          top: ${cy}px;
+          width: ${size}px;
+          height: ${size}px;
+          background: ${color};
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 99999;
+          box-shadow: 0 0 10px ${color}, 0 0 15px #fff;
+          opacity: 1;
+          transition:
+            left ${duration}s cubic-bezier(0.1, 0.8, 0.25, 1),
+            top ${duration}s cubic-bezier(0.1, 0.8, 0.25, 1),
+            transform ${duration}s ease-out,
+            opacity ${duration}s cubic-bezier(0.8, 0, 1, 1);
+        `;
+        document.body.appendChild(el);
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            el.style.left = `${cx + dx}px`;
+            el.style.top = `${cy + dy}px`;
+            el.style.transform = `rotate(${rotation}deg) scale(0.1)`;
+            el.style.opacity = "0";
+            setTimeout(() => el.remove(), duration * 1000);
+          });
+        });
+      }
+    }, delay);
+  }
+
+  spawnBurstShell(50, 200, 120, 0);
+  spawnBurstShell(30, 280, 180, 120);
+}
+
+function getDynamicWheelFontSize(labelLength, segmentCount) {
+  let baseSize = segmentCount > 6 ? 12 : 14;
+  if (labelLength > 15) baseSize -= 1.5;
+  return Math.max(9, baseSize);
+}
+
+const LuckySpinModal = memo(({ isOpen, onClose, freeProducts, onAddFreeProduct, onSkip, alreadyHasFree }) => {
+  const canvasRef = useRef(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [currentRotation, setCurrentRotation] = useState(0);
+  const animFrameRef = useRef(null);
+
+  const segments = useMemo(() => {
+    if (!freeProducts || freeProducts.length === 0) return [];
+    return freeProducts.slice(0, 8);
+  }, [freeProducts]);
+
+  const drawWheel = useCallback(
+    (rot = 0) => {
+      const canvas = canvasRef.current;
+      if (!canvas || segments.length === 0) return;
+      const ctx = canvas.getContext("2d");
+
+      const size = canvas.width;
+      const cx = size / 2,
+        cy = size / 2,
+        r = size / 2 - 10;
+      const count = segments.length;
+      const arc = (2 * Math.PI) / count;
+
+      ctx.clearRect(0, 0, size, size);
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 6, 0, 2 * Math.PI);
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fill();
+
+      for (let i = 0; i < count; i++) {
+        const start = rot + i * arc - Math.PI / 2;
+        const end = start + arc;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, start, end);
+        ctx.closePath();
+        ctx.fillStyle = SPIN_COLORS[i % SPIN_COLORS.length];
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(start + arc / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#f8fafc";
+
+        const rawLabel = segments[i]?.productname || `Gift ${i + 1}`;
+        const cleanLabel = rawLabel.substring(0, 24);
+
+        const fontSize = getDynamicWheelFontSize(cleanLabel.length, count);
+        ctx.font = `bold ${fontSize}px 'Plus Jakarta Sans'`;
+
+        const words = cleanLabel.split(" ");
+        if (words.length >= 2 && cleanLabel.length > 12) {
+          const mid = Math.ceil(words.length / 2);
+          const firstLine = words.slice(0, mid).join(" ");
+          const secondLine = words.slice(mid).join(" ");
+          ctx.fillText(firstLine, r - 20, -fontSize / 2);
+          ctx.fillText(secondLine, r - 20, fontSize / 2 + 2);
+        } else {
+          ctx.fillText(cleanLabel, r - 20, fontSize / 3);
+        }
+        ctx.restore();
+      }
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 32, 0, 2 * Math.PI);
+      ctx.fillStyle = "#030712";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = "#f59e0b";
+      ctx.font = "bold 11px 'Syne'";
+      ctx.textAlign = "center";
+      ctx.fillText("SPIN", cx, cy - 2);
+      ctx.fillText("WIN", cx, cy + 10);
+    },
+    [segments]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setResult(null);
+      setIsSpinning(false);
+      setCurrentRotation(0);
+      setTimeout(() => drawWheel(0), 100);
+    }
+  }, [isOpen, drawWheel]);
+
+  const handleSpin = () => {
+    if (isSpinning || segments.length === 0) return;
+    setIsSpinning(true);
+    setResult(null);
+
+    const count = segments.length;
+    const arc = (2 * Math.PI) / count;
+    const winIndex = Math.floor(Math.random() * count);
+
+    const targetAngle = -(winIndex * arc) - arc / 2 + Math.PI * 2 * 6;
+    const totalSpin = targetAngle + (Math.random() * 0.2 - 0.1);
+    const duration = 4000;
+    const startTime = performance.now();
+    const startRot = currentRotation;
+
+    const animate = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 4);
+      const rot = startRot + totalSpin * ease;
+
+      setCurrentRotation(rot);
+      drawWheel(rot);
+
+      if (progress < 1) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsSpinning(false);
+        setResult(segments[winIndex]);
+        launchCrackerBurst(canvasRef.current);
+      }
+    };
+    animFrameRef.current = requestAnimationFrame(animate);
+  };
+
+  useEffect(
+    () => () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    },
+    []
+  );
+
+  const handleClaim = () => {
+    if (result) onAddFreeProduct(result);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 65,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "1rem",
+          background: "rgba(3,7,18,0.6)",
+          backdropFilter: "blur(12px)",
+        }}
+        onClick={onSkip}
+      >
+        <motion.div
+          initial={{ scale: 0.95, y: 15 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.95, y: 15 }}
+          onClick={(e) => e.stopPropagation()}
+          className="glassmorphic"
+          style={{
+            borderRadius: "24px",
+            boxShadow: `0 30px 60px rgba(0,0,0,0.6)`,
+            maxWidth: "25rem",
+            width: "100%",
+            padding: "2rem",
+          }}
+        >
+          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+            <span className="pill" style={{ marginBottom: "0.75rem" }}>
+              🎁 Lucky Draw
+            </span>
+            <h2 className="display text-xl" style={{ color: C.ink, marginBottom: "0.5rem" }}>
+              Spin &amp; Win a Gift!
+            </h2>
+            <p style={{ color: C.slate, fontSize: "14px" }}>
+              {alreadyHasFree
+                ? "You already claimed your free gift!"
+                : segments.length > 0
+                ? `${segments.length} surprise allocations available — launch spin.`
+                : "No promotional units loaded."}
+            </p>
+          </div>
+
+          {!alreadyHasFree && (
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "1.5rem",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 0,
+                  height: 0,
+                  borderLeft: "10px solid transparent",
+                  borderRight: "10px solid transparent",
+                  borderTop: `18px solid ${C.gold}`,
+                  zIndex: 2,
+                }}
+              />
+              <canvas
+                ref={canvasRef}
+                width={280}
+                height={280}
+                style={{
+                  borderRadius: "50%",
+                  display: "block",
+                  width: "250px",
+                  height: "250px",
+                }}
+              />
+            </div>
+          )}
+
+          <AnimatePresence>
+            {result && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{
+                  background: "rgba(16,185,129,0.06)",
+                  border: `1px solid rgba(16,185,129,0.2)`,
+                  borderRadius: "12px",
+                  padding: "14px",
+                  marginBottom: "1.25rem",
+                  textAlign: "center",
+                }}
+              >
+                <p
+                  style={{
+                    color: C.green,
+                    fontSize: "11px",
+                    fontWeight: 800,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    marginBottom: 4,
+                  }}
+                >
+                  🎉 COMPLEMENTARY ALLOCATION
+                </p>
+                <p style={{ fontWeight: 800, color: C.ink, fontSize: "15px" }}>
+                  {result.productname}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={onSkip}
+              className="btn-outline"
+              style={{ flex: 1, justifyContent: "center", borderRadius: "12px" }}
+            >
+              Skip
+            </button>
+            {alreadyHasFree ? (
+              <button
+                onClick={onSkip}
+                className="btn-primary"
+                style={{ flex: 2, justifyContent: "center", borderRadius: "12px" }}
+              >
+                Continue
+              </button>
+            ) : result ? (
+              <button
+                onClick={handleClaim}
+                className="btn-primary"
+                style={{
+                  flex: 2,
+                  justifyContent: "center",
+                  borderRadius: "12px",
+                  background: "linear-gradient(135deg, #10b981, #059669)",
+                }}
+              >
+                Claim &amp; Continue
+              </button>
+            ) : (
+              <button
+                onClick={handleSpin}
+                disabled={isSpinning || segments.length === 0}
+                className="btn-primary"
+                style={{ flex: 2, justifyContent: "center", borderRadius: "12px" }}
+              >
+                {isSpinning ? "Spinning…" : "🎰 Trigger Spin"}
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+});
+LuckySpinModal.displayName = "LuckySpinModal";
+
+export default function Home() {
+  const navigate = useNavigate();
+
+  // Banners & Fast Running state
+  const [banners, setBanners] = useState([]);
+  const [slide, setSlide] = useState(0);
+  const [fastRunning, setFastRunning] = useState([]);
+
+  // Pricelist data states
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState({});
+  const [freeCartItem, setFreeCartItem] = useState(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isExpandedCart, setIsExpandedCart] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [showSpinModal, setShowSpinModal] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showMinOrderModal, setShowMinOrderModal] = useState(false);
+  const [minOrderMessage, setMinOrderMessage] = useState("");
+  const [showToaster, setShowToaster] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBookingLoading, setIsBookingLoading] = useState(false);
+  const [customerDetails, setCustomerDetails] = useState({
+    customer_name: "",
+    address: "",
+    district: "",
+    state: "",
+    mobile_number: "",
+    email: "",
+    customer_type: "User",
+  });
+  const [selectedType, setSelectedType] = useState("All");
+  const [selectedBrand, setSelectedBrand] = useState("All");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [brandSearchInput, setBrandSearchInput] = useState("");
+  const [brandSearchTerm, setBrandSearchTerm] = useState("");
+  const [promocode, setPromocode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [promocodes, setPromocodes] = useState([]);
+  const [showLoader, setShowLoader] = useState(false);
+  const searchDebounce = useRef(null);
+  const brandDebounce = useRef(null);
+  const promoDebounce = useRef(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiStep, setAiStep] = useState(0);
+  const [aiBudget, setAiBudget] = useState("");
+  const [aiPreferences, setAiPreferences] = useState({
+    kids: false,
+    sound: false,
+    night: false,
+    kidsnight: false,
+  });
+  const [suggestedCart, setSuggestedCart] = useState({});
+  const typeScrollRef = useRef(null);
+
+  const handleSearchInputChange = useCallback((e) => {
+    const val = e.target.value;
+    setSearchInput(val);
+    clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => setSearchTerm(val), 220);
+  }, []);
+
+  const handleBrandSearchInputChange = useCallback((e) => {
+    const val = e.target.value;
+    setBrandSearchInput(val);
+    setSelectedBrand("All");
+    clearTimeout(brandDebounce.current);
+    brandDebounce.current = setTimeout(() => setBrandSearchTerm(val), 220);
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchInput("");
+    setSearchTerm("");
+  }, []);
+
+  const clearBrandSearch = useCallback(() => {
+    setBrandSearchInput("");
+    setBrandSearchTerm("");
+  }, []);
+
+  const showError = useCallback((message) => {
+    setMinOrderMessage(message);
+    setShowMinOrderModal(true);
+    setTimeout(() => setShowMinOrderModal(false), 5000);
+  }, []);
+
+  const freeProductsList = useMemo(
+    () =>
+      products.filter(
+        (p) =>
+          (typeof p.status === "string" && p.status.toLowerCase() === "free") ||
+          p.free === true ||
+          p.is_free === true
+      ),
+    [products]
+  );
+
+  const brandList = useMemo(() => {
+    const brands = new Set();
+    products.forEach((p) => {
+      if (p.brand && p.brand.trim()) brands.add(p.brand.trim());
+    });
+    return ["All", ...Array.from(brands).sort()];
+  }, [products]);
+
+  const downloadPDF = useCallback(() => {
+    if (!products.length) return;
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginL = 10;
+    const marginR = 10;
+    const tableWidth = pageWidth - marginL - marginR;
+    let yOffset = 16;
+
+    // Header on first page
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(234, 88, 12);
+    doc.text("SRI PALANIYAPPA CRACKERS", pageWidth / 2, yOffset, { align: "center" });
+    yOffset += 8;
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      "Website: www.sripalaniyappacrackers.com   |   Contact: +91 81242 59430",
+      pageWidth / 2,
+      yOffset,
+      { align: "center" }
+    );
+    yOffset += 7;
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(30, 41, 59);
+    doc.text("Retail Pricelist - 2026", pageWidth / 2, yOffset, { align: "center" });
+    yOffset += 12;
+
+    const ROW_HEIGHT = 8.8;
+    const SECTION_HEADER_H = 8.5;
+    const COL_HEADER_H = 7.5;
+    const colDividers = [22, 44, 130, 152, 178];
+
+    const drawColHeader = (y) => {
+      doc.setFillColor(234, 88, 12);
+      doc.rect(marginL, y, tableWidth, COL_HEADER_H, "F");
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      const hTextY = y + 5.2;
+      doc.text("Sl", 16, hTextY, { align: "center" });
+      doc.text("Code", 33, hTextY, { align: "center" });
+      doc.text("Product Name", 46, hTextY, { align: "left" });
+      doc.text("Rate", 150, hTextY, { align: "right" });
+      doc.text("Disc. Rate", 176, hTextY, { align: "right" });
+      doc.text("Per", 189, hTextY, { align: "center" });
+    };
+
+    let slNo = 1;
+
+    for (const type of ORDERED_TYPES) {
+      const typeKey = type.replace(/ /g, "_").toLowerCase();
+      const typeProducts = products
+        .filter((p) => p.product_type?.toLowerCase() === typeKey)
+        .sort(serialSort);
+
+      if (!typeProducts.length) continue;
+
+      if (yOffset + SECTION_HEADER_H + COL_HEADER_H + ROW_HEIGHT * 2 > pageHeight - 15) {
+        doc.addPage();
+        yOffset = 15;
+      }
+
+      // Draw Section Category Header
+      doc.setFillColor(241, 245, 249);
+      doc.rect(marginL, yOffset, tableWidth, SECTION_HEADER_H, "F");
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(marginL, yOffset, tableWidth, SECTION_HEADER_H);
+      doc.setFillColor(234, 88, 12);
+      doc.rect(marginL, yOffset, 3.5, SECTION_HEADER_H, "F");
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 41, 59);
+      doc.text(capitalize(type), marginL + 7, yOffset + 5.8);
+      yOffset += SECTION_HEADER_H;
+
+      // Draw Column Header
+      drawColHeader(yOffset);
+      yOffset += COL_HEADER_H;
+
+      for (const product of typeProducts) {
+        if (yOffset + ROW_HEIGHT > pageHeight - 15) {
+          doc.addPage();
+          yOffset = 15;
+          drawColHeader(yOffset);
+          yOffset += COL_HEADER_H;
+        }
+
+        const price = roundPrice(product.price);
+        const discount = price * ((product.discount || 0) / 100);
+        const discountedRate = price - discount;
+
+        if (slNo % 2 === 0) {
+          doc.setFillColor(255, 250, 245);
+          doc.rect(marginL, yOffset, tableWidth, ROW_HEIGHT, "F");
+        }
+
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(marginL, yOffset, tableWidth, ROW_HEIGHT);
+        colDividers.forEach((x) => doc.line(x, yOffset, x, yOffset + ROW_HEIGHT));
+
+        const textY = yOffset + 6.0;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(String(slNo++), 16, textY, { align: "center" });
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(30, 41, 59);
+        doc.text(product.serial_number || "", 33, textY, { align: "center" });
+
+        doc.setFont("helvetica", "normal");
+        const nameLines = doc.splitTextToSize(product.productname || "", 82);
+        if (nameLines.length > 1) {
+          doc.setFontSize(8.5);
+          doc.setTextColor(15, 23, 42);
+          doc.text(nameLines.slice(0, 2), 46, yOffset + 3.4, { lineHeightFactor: 1.1 });
+        } else {
+          doc.setFontSize(10);
+          doc.setTextColor(15, 23, 42);
+          doc.text(nameLines[0] || "", 46, textY);
+        }
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(185, 28, 28);
+        doc.text(`Rs.${formatPrice(price)}`, 150, textY, { align: "right" });
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        doc.setTextColor(21, 128, 61);
+        doc.text(`Rs.${formatPrice(discountedRate)}`, 176, textY, { align: "right" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(product.per || "Unit", 189, textY, { align: "center" });
+
+        yOffset += ROW_HEIGHT;
+      }
+
+      yOffset += 4;
+    }
+
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Sri Palaniyappa Crackers  •  www.sripalaniyappacrackers.com  •  Page ${i} of ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 6,
+        { align: "center" }
+      );
+    }
+
+    doc.save("SPC_Pricelist_2026.pdf");
+  }, [products]);
+
+  // Initial Data Fetch
+  useEffect(() => {
+    const initializeData = async () => {
+      setIsLoading(true);
+      try {
+        const savedCart = localStorage.getItem("firecracker-cart");
+        if (savedCart) setCart(JSON.parse(savedCart));
+        const savedFree = localStorage.getItem("firecracker-free-cart");
+        if (savedFree) {
+          const parsed = JSON.parse(savedFree);
+          setFreeCartItem(Array.isArray(parsed) ? parsed[0] || null : parsed);
+        }
+
+        const [bannersRes, statesRes, productsRes, promocodesRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/banners`).catch(() => ({ json: () => [] })),
+          fetch(`${API_BASE_URL}/api/locations/states`).catch(() => ({ json: () => [] })),
+          fetch(`${API_BASE_URL}/api/products`).catch(() => ({ json: () => ({ data: [] }) })),
+          fetch(`${API_BASE_URL}/api/promocodes`).catch(() => ({ json: () => [] })),
+        ]);
+
+        const [bannersData, statesData, productsData, promocodesData] = await Promise.all([
+          bannersRes.json(),
+          statesRes.json(),
+          productsRes.json(),
+          promocodesRes.json(),
+        ]);
+
+        if (Array.isArray(bannersData)) {
+          setBanners(bannersData.filter((b) => b.is_active));
+        }
+        setStates(Array.isArray(statesData) ? statesData : []);
+
+        const naturalSort = (a, b) =>
+          new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }).compare(
+            a.productname,
+            b.productname
+          );
+        const seenSerials = new Set();
+        const rawProducts = Array.isArray(productsData?.data) ? productsData.data : [];
+        const normalizedProducts = rawProducts
+          .filter((p) => (p.status || "").toLowerCase() !== "off")
+          .filter((p) => !seenSerials.has(p.serial_number) && seenSerials.add(p.serial_number))
+          .map((product) => ({
+            ...product,
+            images: product.image
+              ? typeof product.image === "string"
+                ? JSON.parse(product.image)
+                : product.image
+              : [],
+          }))
+          .sort(naturalSort);
+
+        setProducts(normalizedProducts);
+        setFastRunning(normalizedProducts.filter((p) => p.fast_running));
+        setPromocodes(Array.isArray(promocodesData) ? promocodesData : []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initializeData();
+  }, []);
+
+  // Banner slide timer
+  useEffect(() => {
+    if (banners.length > 1) {
+      const i = setInterval(() => setSlide((p) => (p + 1) % banners.length), 5000);
+      return () => clearInterval(i);
+    }
+  }, [banners]);
+
+  // Periodic Banner refresh
+  useEffect(() => {
+    const refreshBanners = () =>
+      fetch(`${API_BASE_URL}/api/banners`)
+        .then((r) => r.json())
+        .then((d) => Array.isArray(d) && setBanners(d.filter((b) => b.is_active)))
+        .catch(console.error);
+    const i = setInterval(refreshBanners, 1200000);
+    return () => clearInterval(i);
+  }, []);
+
+  // Fetch districts when state changes
+  useEffect(() => {
+    if (customerDetails.state) {
+      fetch(`${API_BASE_URL}/api/locations/states/${customerDetails.state}/districts`)
+        .then((res) => res.json())
+        .then((data) => setDistricts(Array.isArray(data) ? data : []))
+        .catch((err) => console.error(err));
+    }
+  }, [customerDetails.state]);
+
+  // LocalStorage sync
+  useEffect(() => {
+    localStorage.setItem("firecracker-cart", JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem("firecracker-free-cart", JSON.stringify(freeCartItem));
+  }, [freeCartItem]);
+
+  const handleApplyPromo = useCallback(
+    (code) => {
+      if (!code) {
+        setAppliedPromo(null);
+        return;
+      }
+      const found = promocodes.find((p) => p.code.toLowerCase() === code.toLowerCase());
+      if (!found) {
+        showError("Invalid promocode.");
+        return;
+      }
+      if (found.end_date && new Date(found.end_date) < new Date()) {
+        showError("This promocode has expired.");
+        return;
+      }
+      setAppliedPromo(found);
+    },
+    [promocodes, showError]
+  );
+
+  useEffect(() => {
+    clearTimeout(promoDebounce.current);
+    promoDebounce.current = setTimeout(() => {
+      if (promocode && promocode !== "custom") handleApplyPromo(promocode);
+      else setAppliedPromo(null);
+    }, 500);
+    return () => clearTimeout(promoDebounce.current);
+  }, [promocode, handleApplyPromo]);
+
+  const addToCart = useCallback((product) => {
+    if (!product?.serial_number) return;
+    if (typeof product.status === "string" && product.status.toLowerCase() === "free") return;
+    setCart((prev) => ({ ...prev, [product.serial_number]: (prev[product.serial_number] || 0) + 1 }));
+  }, []);
+
+  const removeFromCart = useCallback((product) => {
+    if (!product?.serial_number) return;
+    setCart((prev) => {
+      const count = (prev[product.serial_number] || 1) - 1;
+      const updated = { ...prev };
+      if (count <= 0) delete updated[product.serial_number];
+      else updated[product.serial_number] = count;
+      return updated;
+    });
+  }, []);
+
+  const removeFreeItem = useCallback(() => setFreeCartItem(null), []);
+
+  const addToSuggestedCart = useCallback((product) => {
+    if (!product?.serial_number) return;
+    setSuggestedCart((prev) => ({
+      ...prev,
+      [product.serial_number]: (prev[product.serial_number] || 0) + 1,
+    }));
+  }, []);
+
+  const removeFromSuggestedCart = useCallback((product) => {
+    if (!product?.serial_number) return;
+    setSuggestedCart((prev) => {
+      const count = (prev[product.serial_number] || 1) - 1;
+      const updated = { ...prev };
+      if (count <= 0) delete updated[product.serial_number];
+      else updated[product.serial_number] = count;
+      return updated;
+    });
+  }, []);
+
+  const generateSuggestions = useCallback(() => {
+    const budget = Number(aiBudget);
+    if (!budget || budget <= 0) {
+      showError("Please enter a valid budget");
+      return;
+    }
+    const categories = {
+      kids: ["new_arrivals", "fancy_pencil", "twinkling_star", "guns_and_caps", "matches", "kids_special"],
+      sound: [
+        "bombs",
+        "paper_bombs",
+        "chorsa_and_gaints",
+        "one_sound_crackers_premium",
+        "one_sound_crackers",
+        "delux_crackers",
+        "bijili_crackers",
+        "vip_special_crackers",
+      ],
+      night: [
+        "repeating_shots",
+        "multi_shots",
+        "comets_sky_shots",
+        "sky_shot_mini",
+        "sky_shot_single",
+        "grand_sky_shot",
+        "fun_and_crazy_sky_shot",
+        "premium_set_out",
+        "rockets",
+        "new_arrivals",
+      ],
+      kidsnight: [
+        "fountain_and_fancy_novelties",
+        "flower_pots",
+        "ground_chakkars",
+        "sparklers",
+        "premium_sparklers",
+        "colour_fountain_mini",
+        "colour_fountain_mega",
+        "crackling_fountain",
+      ],
+    };
+    const selectedPrefs = ["night", "kids", "sound", "kidsnight"].filter((p) => aiPreferences[p]);
+    if (!selectedPrefs.length) {
+      showError("Select at least one preference");
+      return;
+    }
+
+    const budgetPerPref = budget / selectedPrefs.length;
+    const tempCart = {};
+    const sparklerSizeCount = {};
+    const getSparklerSize = (name) => {
+      const m = name?.match(/(\d+)\s*cm/i);
+      return m ? m[1] : null;
+    };
+
+    const MAX_QTY_RATIO = 0.2;
+    const MIN_REMAINING_RATIO = 0.02;
+
+    for (const pref of selectedPrefs) {
+      const types = categories[pref];
+      const byType = {};
+      for (const type of types) byType[type] = [];
+
+      products
+        .filter(
+          (p) =>
+            types.includes(p.product_type?.toLowerCase()) &&
+            !(typeof p.status === "string" && p.status.toLowerCase() === "free")
+        )
+        .forEach((p) => {
+          const type = p.product_type?.toLowerCase();
+          if (byType[type])
+            byType[type].push({
+              ...p,
+              finalPrice: roundPrice(p.price) * (1 - (p.discount || 0) / 100),
+            });
+        });
+
+      for (const type of types) {
+        byType[type].sort(() => Math.random() - 0.5).sort((a, b) => {
+          const d = a.finalPrice - b.finalPrice;
+          return Math.abs(d) < 50 ? Math.random() - 0.5 : d;
+        });
+      }
+
+      const canAddSparkler = (p) => {
+        if (p.product_type !== "sparklers" && p.product_type !== "premium_sparklers") return true;
+        const size = getSparklerSize(p.productname) || "unknown";
+        return (sparklerSizeCount[size] || 0) < 3;
+      };
+      const registerSparkler = (p) => {
+        if (p.product_type !== "sparklers" && p.product_type !== "premium_sparklers") return;
+        const size = getSparklerSize(p.productname) || "unknown";
+        sparklerSizeCount[size] = (sparklerSizeCount[size] || 0) + 1;
+      };
+
+      let prefSpent = 0;
+
+      for (const type of types) {
+        const candidate = byType[type].find(
+          (p) => p.finalPrice > 0 && !tempCart[p.serial_number] && canAddSparkler(p)
+        );
+        if (!candidate) continue;
+        const remaining = budgetPerPref - prefSpent;
+        if (candidate.finalPrice > remaining) continue;
+        tempCart[candidate.serial_number] = 1;
+        prefSpent += candidate.finalPrice;
+        registerSparkler(candidate);
+      }
+
+      const allCandidates = types.flatMap((type) => byType[type]).filter((p) => p.finalPrice > 0);
+      allCandidates.sort((a, b) => a.finalPrice - b.finalPrice);
+      const cheapestPrice = allCandidates.length ? allCandidates[0].finalPrice : Infinity;
+      const stopThreshold = Math.min(budgetPerPref * MIN_REMAINING_RATIO, cheapestPrice * 0.9);
+
+      let safetyLimit = 2000;
+      while (budgetPerPref - prefSpent > stopThreshold && safetyLimit-- > 0) {
+        const remaining = budgetPerPref - prefSpent;
+        const shuffled = [...allCandidates].sort(() => Math.random() - 0.5);
+        let added = false;
+
+        for (const p of shuffled) {
+          if (p.finalPrice > remaining) continue;
+          const currentQty = tempCart[p.serial_number] || 0;
+          const maxQty = Math.max(1, Math.floor((budgetPerPref * MAX_QTY_RATIO) / p.finalPrice));
+          if (currentQty >= maxQty) continue;
+          if (currentQty === 0 && !canAddSparkler(p)) continue;
+
+          tempCart[p.serial_number] = currentQty + 1;
+          prefSpent += p.finalPrice;
+          if (currentQty === 0) registerSparkler(p);
+          added = true;
+          break;
+        }
+
+        if (!added) break;
+      }
+    }
+
+    setSuggestedCart(tempCart);
+  }, [aiBudget, aiPreferences, products, showError]);
+
+  const handleAiNext = useCallback(() => {
+    if (aiStep === 0 && !aiBudget) return showError("Please enter a budget.");
+    if (aiStep < 2) setAiStep((s) => s + 1);
+    else generateSuggestions();
+  }, [aiStep, aiBudget, generateSuggestions, showError]);
+
+  const handleAiBack = useCallback(() => {
+    if (aiStep > 0) {
+      if (aiStep === 2) setSuggestedCart({});
+      setAiStep((s) => s - 1);
+    }
+  }, [aiStep]);
+
+  const addSuggestedToCart = useCallback(() => {
+    setCart((prev) => {
+      const updated = { ...prev };
+      Object.entries(suggestedCart).forEach(([serial, qty]) => {
+        updated[serial] = (updated[serial] || 0) + qty;
+      });
+      return updated;
+    });
+    setShowAiModal(false);
+    setAiStep(0);
+    setAiBudget("");
+    setAiPreferences({ kids: false, sound: false, night: false, kidsnight: false });
+    setSuggestedCart({});
+  }, [suggestedCart]);
+
+  const totals = useMemo(() => {
+    let net = 0,
+      productDiscount = 0,
+      subtotal = 0,
+      promoDiscount = 0;
+    for (const serial in cart) {
+      const qty = cart[serial];
+      const p = products.find((x) => x.serial_number === serial);
+      if (!p) continue;
+      const orig = roundPrice(p.price);
+      const disc = orig * (p.discount / 100);
+      const after = orig - disc;
+      net += orig * qty;
+      productDiscount += disc * qty;
+      subtotal += after * qty;
+      if (appliedPromo && (!appliedPromo.product_type || p.product_type === appliedPromo.product_type))
+        promoDiscount += (after * qty * appliedPromo.discount) / 100;
+    }
+    const afterPromo = subtotal - promoDiscount;
+    const fee = afterPromo * 0.01;
+    const total = afterPromo + fee;
+    const save = productDiscount + promoDiscount;
+    return {
+      net: formatPrice(net),
+      save: formatPrice(save),
+      total: formatPrice(total),
+      promo_discount: formatPrice(promoDiscount),
+      product_discount: formatPrice(productDiscount),
+      processing_fee: formatPrice(fee),
+      originalTotal: subtotal,
+      totalDiscount: productDiscount,
+      subtotalRaw: subtotal,
+    };
+  }, [cart, products, appliedPromo]);
+
+  const isCartUnlocked = totals.subtotalRaw >= MIN_PURCHASE;
+
+  const handleCheckoutClick = useCallback(() => {
+    if (!Object.keys(cart).length) {
+      showError("Your cart is empty.");
+      return;
+    }
+    if (!isCartUnlocked) {
+      showError(
+        `Minimum purchase is ₹${MIN_PURCHASE}. Add ₹${formatPrice(
+          MIN_PURCHASE - totals.subtotalRaw
+        )} more to proceed.`
+      );
+      return;
+    }
+    setIsCartOpen(false);
+    if (totals.subtotalRaw > 3000) {
+      setShowSpinModal(true);
+    } else {
+      setShowModal(true);
+    }
+  }, [cart, totals.subtotalRaw, isCartUnlocked, showError]);
+
+  const handleSpinSkip = useCallback(() => {
+    setShowSpinModal(false);
+    setShowModal(true);
+  }, []);
+
+  const handleAddFreeProduct = useCallback((product) => {
+    setFreeCartItem({ ...product, price: 0, is_free: true, quantity: 1 });
+    setShowSpinModal(false);
+    setShowModal(true);
+  }, []);
+
+  const handleRocketComplete = useCallback(() => {
+    setShowLoader(false);
+    setIsBookingLoading(false);
+    setIsCartOpen(false);
+    setShowModal(false);
+    setShowSpinModal(false);
+    setShowDetailsModal(false);
+    setShowMinOrderModal(false);
+    setIsExpandedCart(false);
+    setCart({});
+    setFreeCartItem(null);
+    setCustomerDetails({
+      customer_name: "",
+      address: "",
+      district: "",
+      state: "",
+      mobile_number: "",
+      email: "",
+      customer_type: "User",
+    });
+    setAppliedPromo(null);
+    setPromocode("");
+    setShowSuccess(true);
+    setShowToaster(true);
+  }, []);
+
+  const handleFinalCheckout = useCallback(async () => {
+    setIsBookingLoading(true);
+    const order_id = `ORD-${Date.now()}`;
+    const selectedProducts = Object.entries(cart).map(([serial, qty]) => {
+      const product = products.find((p) => p.serial_number === serial);
+      return {
+        id: product.id,
+        product_type: product.product_type,
+        quantity: qty,
+        per: product.per,
+        price: roundPrice(product.price),
+        discount: product.discount,
+        serial_number: product.serial_number,
+        productname: product.productname,
+        status: product.status,
+      };
+    });
+    const freeProductPayload = freeCartItem
+      ? [
+          {
+            id: freeCartItem.id,
+            product_type: freeCartItem.product_type,
+            quantity: 1,
+            per: freeCartItem.per,
+            price: 0,
+            discount: 0,
+            serial_number: freeCartItem.serial_number,
+            productname: freeCartItem.productname,
+            status: "free",
+            is_free: true,
+          },
+        ]
+      : [];
+    const allProducts = [...selectedProducts, ...freeProductPayload];
+    if (!allProducts.length) {
+      showError("Your cart is empty.");
+      setIsBookingLoading(false);
+      return;
+    }
+    if (
+      !customerDetails.customer_name ||
+      !customerDetails.address ||
+      !customerDetails.district ||
+      !customerDetails.state ||
+      !customerDetails.mobile_number
+    ) {
+      showError("Please fill all required customer details.");
+      setIsBookingLoading(false);
+      return;
+    }
+    const mobile = customerDetails.mobile_number.replace(/\D/g, "").slice(-10);
+    if (mobile.length !== 10) {
+      showError("Mobile number must be 10 digits.");
+      setIsBookingLoading(false);
+      return;
+    }
+    const selectedState = customerDetails.state?.trim();
+    const minOrder = states.find((s) => s.name === selectedState)?.min_rate;
+    if (minOrder && totals.originalTotal < minOrder) {
+      showError(
+        `Minimum order for ${selectedState} is ₹${minOrder}. Your total is ₹${formatPrice(
+          totals.originalTotal
+        )}.`
+      );
+      setIsBookingLoading(false);
+      return;
+    }
+    try {
+      setShowLoader(true);
+
+      const bookingResponse = await fetch(`${API_BASE_URL}/api/direct/bookings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id,
+          products: allProducts,
+          net_rate: Number(totals.net),
+          you_save: Number(totals.save),
+          processing_fee: Number(totals.processing_fee),
+          total: Number(totals.total),
+          promo_discount: Number(totals.promo_discount || "0"),
+          free_item: freeCartItem
+            ? {
+                serial_number: freeCartItem.serial_number,
+                productname: freeCartItem.productname,
+                price: 0,
+              }
+            : null,
+          customer_type: customerDetails.customer_type,
+          customer_name: customerDetails.customer_name,
+          address: customerDetails.address,
+          mobile_number: mobile,
+          email: customerDetails.email,
+          district: customerDetails.district,
+          state: customerDetails.state,
+          promocode: appliedPromo?.code || null,
+        }),
+      });
+
+      if (!bookingResponse.ok) {
+        const errData = await bookingResponse.json();
+        showError(errData.message || "Booking failed.");
+        setShowLoader(false);
+        setIsBookingLoading(false);
+        return;
+      }
+
+      const bookingData = await bookingResponse.json();
+      const confirmedOrderId = bookingData.order_id;
+
+      const pdfResponse = await fetch(`${API_BASE_URL}/api/direct/invoice/${confirmedOrderId}`);
+      if (pdfResponse.ok) {
+        const blob = await pdfResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const safeName = (customerDetails.customer_name || "order")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+        link.download = `${safeName}-${confirmedOrderId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+
+      handleRocketComplete();
+    } catch (err) {
+      showError("Something went wrong during checkout.");
+      setShowLoader(false);
+      setIsBookingLoading(false);
+    }
+  }, [
+    cart,
+    products,
+    freeCartItem,
+    customerDetails,
+    states,
+    totals,
+    appliedPromo,
+    showError,
+    handleRocketComplete,
+  ]);
+
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    if (name === "mobile_number") {
+      const cleaned = value.replace(/\D/g, "").slice(-10);
+      setCustomerDetails((prev) => ({ ...prev, [name]: cleaned }));
+    } else {
+      setCustomerDetails((prev) => ({ ...prev, [name]: value }));
+    }
+  }, []);
+
+  const handleShowDetails = useCallback((product) => {
+    setSelectedProduct(product);
+    setShowDetailsModal(true);
+  }, []);
+
+  const handleCloseDetails = useCallback(() => {
+    setSelectedProduct(null);
+    setShowDetailsModal(false);
+  }, []);
+
+  const handleImageClick = useCallback((media) => {
+    const items = Array.isArray(media)
+      ? media
+      : typeof media === "string"
+      ? (() => {
+          try {
+            return JSON.parse(media);
+          } catch {
+            return [media];
+          }
+        })()
+      : [];
+    setSelectedImages(items);
+    setCurrentImageIndex(0);
+    setShowImageModal(true);
+  }, []);
+
+  const handleCloseImageModal = useCallback(() => {
+    setShowImageModal(false);
+    setSelectedImages([]);
+    setCurrentImageIndex(0);
+  }, []);
+
+  const productTypes = useMemo(() => {
+    const available = [
+      ...new Set(
+        products
+          .filter((p) => p.product_type !== "gift_box_dealers")
+          .map((p) => p.product_type || "Others")
+      ),
+    ];
+    const filtered = ORDERED_TYPES.filter((t) =>
+      available.includes(t.replace(/ /g, "_").toLowerCase())
+    );
+    return ["All", ...filtered];
+  }, [products]);
+
+  const grouped = useMemo(() => {
+    const result = products
+      .filter(
+        (p) =>
+          p.product_type !== "gift_box_dealers" &&
+          !(typeof p.status === "string" && p.status.toLowerCase() === "free") &&
+          (selectedType === "All" || p.product_type === selectedType.replace(/ /g, "_").toLowerCase()) &&
+          (selectedBrand === "All" || (p.brand && p.brand.trim() === selectedBrand)) &&
+          (!searchTerm ||
+            p.productname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.serial_number.toLowerCase().includes(searchTerm.toLowerCase())) &&
+          (!brandSearchTerm || (p.brand && p.brand.toLowerCase().includes(brandSearchTerm.toLowerCase())))
+      )
+      .reduce((acc, p) => {
+        const key = p.product_type || "Others";
+        acc[key] = acc[key] || [];
+        acc[key].push(p);
+        return acc;
+      }, {});
+    const orderedResult = {};
+    ORDERED_TYPES.map((t) => t.replace(/ /g, "_").toLowerCase()).forEach((t) => {
+      if (result[t]) orderedResult[t] = result[t].sort(serialSort);
+    });
+    return orderedResult;
+  }, [products, selectedType, selectedBrand, searchTerm, brandSearchTerm]);
+
+  const suggestedTotals = useMemo(() => {
+    let total = 0;
+    for (const serial in suggestedCart) {
+      const qty = suggestedCart[serial];
+      const p = products.find((x) => x.serial_number === serial);
+      if (!p) continue;
+      total += roundPrice(p.price) * (1 - p.discount / 100) * qty;
+    }
+    return formatPrice(total);
+  }, [suggestedCart, products]);
+
+  const cartItemCount = useMemo(
+    () => Object.values(cart).reduce((a, b) => a + b, 0),
+    [cart]
+  );
+
+  const SummaryRows = () => (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        fontSize: "14px",
+      }}
+    >
+      {[
+        { label: "Net Total", val: `₹${totals.net}`, color: C.ink },
+        { label: "Product Discount", val: `−₹${totals.product_discount}`, color: "#ef4444" },
+        ...(appliedPromo
+          ? [
+              {
+                label: `Promo (${appliedPromo.code})`,
+                val: `−₹${totals.promo_discount}`,
+                color: "#ef4444",
+              },
+            ]
+          : []),
+        { label: "You Save", val: `−₹${totals.save}`, color: "#10b981" },
+        { label: "Processing Fee (1%)", val: `₹${totals.processing_fee}`, color: C.slate },
+      ].map(({ label, val, color }) => (
+        <div key={label} style={{ display: "flex", justifyContent: "space-between", color, fontWeight: 500 }}>
+          <span>{label}</span>
+          <span>{val}</span>
+        </div>
+      ))}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontWeight: 800,
+          fontSize: "16px",
+          paddingTop: "0.75rem",
+          borderTop: `1px solid rgba(255,255,255,0.06)`,
+          color: C.gold,
+        }}
+      >
+        <span>Total Payable</span>
+        <span>₹{totals.total}</span>
+      </div>
+    </div>
+  );
+
+  const PromoSelector = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {promocode === "custom" && (
+        <input
+          type="text"
+          value=""
+          onChange={(e) => setPromocode(e.target.value)}
+          placeholder="Enter tracking coupon"
+          style={{
+            width: "100%",
+            padding: "10px 14px",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "10px",
+            background: "rgba(3,7,18,0.3)",
+            fontSize: "13px",
+            color: C.ink,
+          }}
+        />
+      )}
+      {appliedPromo && (
+        <p
+          style={{
+            color: C.green,
+            fontSize: "12px",
+            fontWeight: 600,
+            background: "rgba(16,185,129,0.05)",
+            border: "1px solid rgba(16,185,129,0.15)",
+            borderRadius: "8px",
+            padding: "8px 12px",
+          }}
+        >
+          ✓ {appliedPromo.code} — {formatPercentage(appliedPromo.discount)}% Certification Applied
+        </p>
+      )}
+    </div>
+  );
+
+  if (isLoading) return <LoadingSpinner />;
+
+  return (
+    <div className="min-h-screen overflow-x-hidden cosmic-mesh" style={{ background: C.void, color: C.ink }}>
+      <style>{GLOBAL_STYLES_CSS}</style>
+
+      {/* 1st - Fixed Floating Min Purchase Pipeline if cart active */}
+      {cartItemCount > 0 && (
+        <MinPurchasePipeline
+          subtotalRaw={totals.subtotalRaw}
+          onCartOpen={() => setIsCartOpen(true)}
+          isUnlocked={isCartUnlocked}
+        />
+      )}
+
+      {/* 1st - Navbar */}
+      <div className={isCartOpen ? "mobile:hidden" : ""}>
+        <Navbar />
+      </div>
+
+      {/* Overlays, Notifications & Modals */}
+      <ToasterNotification show={showToaster} onClose={() => setShowToaster(false)} />
+      <SuccessAnimation show={showSuccess} onDismiss={() => setShowSuccess(false)} />
+
+      <LuckySpinModal
+        isOpen={showSpinModal}
+        onClose={handleSpinSkip}
+        freeProducts={freeProductsList}
+        onAddFreeProduct={handleAddFreeProduct}
+        onSkip={handleSpinSkip}
+        alreadyHasFree={!!freeCartItem}
+      />
 
       <AnimatePresence>
-        {showModal && selProduct && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-lg bg-void/60"
-            onClick={() => { setShowModal(false); setSelProduct(null) }}>
-            <motion.div initial={{ scale: 0.96, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 12 }}
-              onClick={e => e.stopPropagation()}
-              className="w-full max-w-xl max-h-[85vh] overflow-y-auto glassmorphic"
-              style={{ borderRadius: "24px", boxShadow: "0 30px 60px rgba(0,0,0,0.7)" }}>
-              <div className="p-8">
-                <div className="flex justify-between items-start mb-6">
+        {showLoader && <RocketLoader onComplete={handleRocketComplete} />}
+
+        {showMinOrderModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-[96] px-4 backdrop-blur-md"
+            style={{ background: "rgba(3,7,18,0.6)" }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95 }}
+              className="glassmorphic p-8 text-center"
+              style={{
+                borderRadius: "20px",
+                maxWidth: "380px",
+                width: "100%",
+                boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  background: `rgba(239,68,68,0.08)`,
+                  border: "1px solid rgba(239,68,68,0.15)",
+                  borderRadius: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 1.25rem",
+                }}
+              >
+                <X style={{ color: "#ef4444", width: 20, height: 20 }} />
+              </div>
+              <h3 className="display text-xl" style={{ color: C.ink, marginBottom: "0.5rem" }}>
+                Validation Error
+              </h3>
+              <p style={{ color: C.slate, fontSize: "14px", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                {minOrderMessage}
+              </p>
+              <button
+                onClick={() => setShowMinOrderModal(false)}
+                className="btn-primary"
+                style={{ width: "100%", justifyContent: "center" }}
+              >
+                Acknowledge
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showDetailsModal && selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-md"
+            style={{ background: "rgba(3,7,18,0.6)" }}
+            onClick={handleCloseDetails}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glassmorphic max-w-lg w-full max-h-[85vh] overflow-y-auto"
+              style={{ borderRadius: "20px", boxShadow: "0 30px 60px rgba(0,0,0,0.6)" }}
+            >
+              <div style={{ padding: "2rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "1.5rem",
+                  }}
+                >
                   <div>
-                    <h2 className="display text-2xl mb-2" style={{ color: C.ink }}>{selProduct.productname}</h2>
-                    <div className="flex items-center gap-4">
-                      <span className="pill">{selProduct.discount}% OFF</span>
-                      <span className="text-2xl font-black tracking-tight" style={{ color: C.gold }}>₹{((selProduct.price * (100 - selProduct.discount)) / 100).toFixed(2)}</span>
+                    <h2 className="display text-2xl" style={{ color: C.ink, marginBottom: "0.5rem" }}>
+                      {selectedProduct.productname}
+                    </h2>
+                    {selectedProduct.brand && (
+                      <span className="pill pill-brand" style={{ marginBottom: 8 }}>
+                        <Tag style={{ width: 12, height: 12 }} /> {selectedProduct.brand}
+                      </span>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+                      {selectedProduct.discount > 0 && (
+                        <span className="pill">{formatPercentage(selectedProduct.discount)}% OFF</span>
+                      )}
+                      <span style={{ fontWeight: 900, fontSize: "24px", color: C.gold }}>
+                        ₹
+                        {formatPrice(
+                          roundPrice(selectedProduct.price) * (1 - selectedProduct.discount / 100)
+                        )}
+                      </span>
                     </div>
                   </div>
-                  <button onClick={() => { setShowModal(false); setSelProduct(null) }}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center transition-all glassmorphic hover:text-white">×</button>
+                  <button
+                    onClick={handleCloseDetails}
+                    className="glassmorphic"
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: "10px",
+                      color: C.slate,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 16,
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
-                <ModernCarousel media={selProduct.image} />
-                <h3 className="text-sm font-bold tracking-wider uppercase mb-3" style={{ color: C.gold }}>Description Parameters</h3>
-                <p className="mb-8 text-base leading-relaxed" style={{ color: C.slate }}>
-                  {selProduct.description || "A premium quality firework crafted for your most memorable celebrations."}
+                <ModernCarousel media={selectedProduct.images} onImageClick={handleImageClick} />
+                <h3
+                  className="text-xs font-bold tracking-wider uppercase mb-2"
+                  style={{ color: C.gold }}
+                >
+                  Specification Parameters
+                </h3>
+                <p className="mb-6 text-sm leading-relaxed" style={{ color: C.slate }}>
+                  {selectedProduct.description ||
+                    "A premium quality firework crafted for your most memorable celebrations."}
                 </p>
-                <button onClick={() => navigate("/price-list")} className="btn-primary w-full justify-center">
-                  Send Specification Enquiry <ArrowRight className="w-5 h-5" />
+                <button
+                  onClick={() => {
+                    addToCart(selectedProduct);
+                    handleCloseDetails();
+                  }}
+                  className="btn-primary"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  <FaPlus style={{ width: 12, height: 12 }} /> Add to Cart
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {isCartOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center backdrop-blur-md"
+            style={{ background: "rgba(3,7,18,0.5)" }}
+            onClick={() => {
+              setIsCartOpen(false);
+              setIsExpandedCart(false);
+            }}
+          >
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 280, damping: 28 }}
+              onClick={(e) => e.stopPropagation()}
+              className="mobile:rounded-t-2xl mobile:w-full glassmorphic"
+              style={{
+                borderRadius: "24px 24px 0 0",
+                boxShadow: `0 -10px 50px rgba(0,0,0,0.5)`,
+                width: "100%",
+                maxWidth: isExpandedCart ? "56rem" : "32rem",
+                maxHeight: "80vh",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "1rem 1.5rem",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(3,7,18,0.2)",
+                  flexShrink: 0,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      background: `rgba(245,158,11,0.05)`,
+                      border: `1px solid rgba(245,158,11,0.2)`,
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <ShoppingCart style={{ width: 14, height: 14, color: C.gold }} />
+                  </div>
+                  <div>
+                    <p className="display" style={{ fontSize: "15px", color: C.ink }}>
+                      Selected Products
+                    </p>
+                    <p style={{ fontSize: "11px", color: C.slate }}>
+                      {cartItemCount} item{cartItemCount !== 1 ? "s" : ""}
+                      {freeCartItem ? " + 1 promotional module 🎁" : ""}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {!isExpandedCart && Object.keys(cart).length > 0 && (
+                    <button
+                      onClick={() => setIsExpandedCart(true)}
+                      className="glassmorphic"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: "8px",
+                        color: C.slate,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <FaExpand style={{ fontSize: 10 }} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setIsCartOpen(false);
+                      setIsExpandedCart(false);
+                    }}
+                    className="glassmorphic"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "8px",
+                      color: C.slate,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "1.25rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                {Object.keys(cart).length === 0 && !freeCartItem ? (
+                  <div style={{ textAlign: "center", padding: "3rem 0" }}>
+                    <ShoppingCart
+                      style={{ width: 24, height: 24, color: C.muted, margin: "0 auto 0.75rem", opacity: 0.3 }}
+                    />
+                    <p className="display text-base" style={{ color: C.muted }}>
+                      Registry Empty
+                    </p>
+                    <p className="serif" style={{ color: C.muted, fontSize: "13px", fontStyle: "italic", marginTop: 4 }}>
+                      Add items to populate logistics parameters
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {Object.entries(cart).map(([serial, qty]) => {
+                      const product = products.find((p) => p.serial_number === serial);
+                      if (!product) return null;
+                      const origPrice = roundPrice(product.price);
+                      const discountAmt = (origPrice * product.discount) / 100;
+                      const priceAfterDiscount = formatPrice(origPrice - discountAmt);
+                      const imageSrc = Array.isArray(product.images)
+                        ? product.images.filter(
+                            (item) => !item.includes("/video/") && !item.toLowerCase().endsWith(".gif")
+                          )[0] || need
+                        : need;
+                      return (
+                        <motion.div
+                          key={serial}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="glassmorphic"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "12px",
+                            borderRadius: "14px",
+                          }}
+                        >
+                          <img
+                            src={imageSrc}
+                            alt={product.productname}
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: "8px",
+                              objectFit: "cover",
+                              cursor: "pointer",
+                              flexShrink: 0,
+                            }}
+                            onClick={() => handleImageClick(product.images)}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p
+                              style={{
+                                fontWeight: 700,
+                                fontSize: "14px",
+                                color: C.ink,
+                                display: "-webkit-box",
+                                WebkitLineClamp: 1,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {product.productname}
+                            </p>
+                            <p style={{ fontSize: "13px", color: C.gold, fontWeight: 700, marginTop: 2 }}>
+                              ₹{priceAfterDiscount} × {qty} ={" "}
+                              <span style={{ color: C.ink }}>₹{formatPrice((origPrice - discountAmt) * qty)}</span>
+                            </p>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                            <button
+                              className="glassmorphic"
+                              onClick={() => removeFromCart(product)}
+                              style={{
+                                width: 26,
+                                height: 26,
+                                color: C.slate,
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <FaMinus style={{ fontSize: 8 }} />
+                            </button>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontSize: "13px",
+                                minWidth: 16,
+                                textAlign: "center",
+                                color: C.ink,
+                              }}
+                            >
+                              {qty}
+                            </span>
+                            <button
+                              onClick={() => addToCart(product)}
+                              className="glassmorphic"
+                              style={{
+                                width: 26,
+                                height: 26,
+                                color: C.slate,
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <FaPlus style={{ fontSize: 8 }} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+
+                    {freeCartItem && (
+                      <>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 0 4px",
+                            borderTop: `1px dashed rgba(255,255,255,0.06)`,
+                            marginTop: 6,
+                          }}
+                        >
+                          <Gift style={{ width: 12, height: 12, color: C.green }} />
+                          <span
+                            style={{
+                              fontFamily: "'Syne', sans-serif",
+                              fontWeight: 800,
+                              fontSize: "10px",
+                              letterSpacing: "0.15em",
+                              textTransform: "uppercase",
+                              color: C.green,
+                            }}
+                          >
+                            Promotional Allocation
+                          </span>
+                        </div>
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="glassmorphic"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "10px",
+                            borderRadius: "14px",
+                            background: "rgba(16,185,129,0.02)",
+                            borderColor: "rgba(16,185,129,0.15)",
+                          }}
+                        >
+                          <img
+                            src={
+                              Array.isArray(freeCartItem.images) && freeCartItem.images.length > 0
+                                ? freeCartItem.images.filter(
+                                    (i) => !i.includes("/video/") && !i.toLowerCase().endsWith(".gif")
+                                  )[0] || need
+                                : need
+                            }
+                            alt={freeCartItem.productname}
+                            style={{ width: 40, height: 44, borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p
+                              style={{
+                                fontWeight: 700,
+                                fontSize: "13px",
+                                color: C.ink,
+                                display: "-webkit-box",
+                                WebkitLineClamp: 1,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }}
+                            >
+                              {freeCartItem.productname}
+                            </p>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                marginTop: 3,
+                                color: C.green,
+                                fontSize: "11px",
+                                fontWeight: 800,
+                              }}
+                            >
+                              🎁 FREE ENTRY
+                            </span>
+                          </div>
+                          <button
+                            onClick={removeFreeItem}
+                            className="glassmorphic"
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: "6px",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: C.slate,
+                            }}
+                          >
+                            ×
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div
+                style={{
+                  padding: "1.25rem 1.5rem",
+                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(3,7,18,0.2)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                  flexShrink: 0,
+                }}
+              >
+                {!isExpandedCart && <PromoSelector />}
+
+                <SummaryRows />
+
+                {isExpandedCart ? (
+                  <button
+                    onClick={() => setIsExpandedCart(false)}
+                    className="btn-outline"
+                    style={{ width: "100%", justifyContent: "center", borderRadius: "12px" }}
+                  >
+                    <FaCompress style={{ fontSize: 11 }} /> Minimize Registry Panel
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button
+                      onClick={() => {
+                        setCart({});
+                        setFreeCartItem(null);
+                      }}
+                      className="btn-outline"
+                      style={{ flex: 1, justifyContent: "center", borderRadius: "12px" }}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={handleCheckoutClick}
+                      disabled={!isCartUnlocked}
+                      className="btn-primary"
+                      style={{
+                        flex: 2.5,
+                        justifyContent: "center",
+                        borderRadius: "12px",
+                        opacity: isCartUnlocked ? 1 : 0.4,
+                        cursor: isCartUnlocked ? "pointer" : "not-allowed",
+                        background: isCartUnlocked
+                          ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                          : "#475569",
+                      }}
+                    >
+                      {isCartUnlocked ? "Checkout" : `Locked`}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showImageModal && selectedImages.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center"
+            style={{ background: "rgba(3,7,18,0.9)", backdropFilter: "blur(6px)" }}
+            onClick={handleCloseImageModal}
+          >
+            <motion.div
+              initial={{ scale: 0.96 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.96 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl w-full mx-4 max-h-[85vh]"
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentImageIndex}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {selectedImages[currentImageIndex]?.includes("/video/") ? (
+                    <video
+                      src={selectedImages[currentImageIndex]}
+                      autoPlay
+                      muted
+                      loop
+                      style={{ width: "100%", maxHeight: "75vh", objectFit: "contain", borderRadius: "16px" }}
+                    />
+                  ) : (
+                    <img
+                      src={selectedImages[currentImageIndex] || need}
+                      alt="Product"
+                      style={{ width: "100%", maxHeight: "75vh", objectFit: "contain", borderRadius: "16px" }}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+              <button
+                onClick={handleCloseImageModal}
+                className="glassmorphic"
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  right: 16,
+                  width: 36,
+                  height: 36,
+                  borderRadius: "10px",
+                  color: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 16,
+                }}
+              >
+                ×
+              </button>
+              {selectedImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() =>
+                      setCurrentImageIndex((prev) => (prev === 0 ? selectedImages.length - 1 : prev - 1))
+                    }
+                    className="glassmorphic"
+                    style={{
+                      position: "absolute",
+                      left: 16,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 36,
+                      height: 36,
+                      borderRadius: "10px",
+                      color: "#fff",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <FaArrowLeft style={{ fontSize: 12 }} />
+                  </button>
+                  <button
+                    onClick={() =>
+                      setCurrentImageIndex((prev) => (prev === selectedImages.length - 1 ? 0 : prev + 1))
+                    }
+                    className="glassmorphic"
+                    style={{
+                      position: "absolute",
+                      right: 16,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: 36,
+                      height: 36,
+                      borderRadius: "10px",
+                      color: "#fff",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <FaArrowRight style={{ fontSize: 12 }} />
+                  </button>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showAiModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-md"
+            style={{ background: "rgba(3,7,18,0.5)" }}
+            onClick={() => {
+              setShowAiModal(false);
+              setAiStep(0);
+              setAiBudget("");
+              setAiPreferences({ kids: false, sound: false, night: false, kidsnight: false });
+              setSuggestedCart({});
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glassmorphic max-w-md w-full max-h-[85vh] overflow-y-auto"
+              style={{ borderRadius: "24px", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}
+            >
+              <div style={{ padding: "2rem 2rem 0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: "1.25rem" }}>
+                  <div
+                    className="glassmorphic"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "1.25rem",
+                      borderColor: C.borderH,
+                    }}
+                  >
+                    🤖
+                  </div>
+                  <div>
+                    <h2 className="display text-lg" style={{ color: C.ink }}>
+                      Smart Purchase
+                    </h2>
+                    <p style={{ fontSize: "13px", color: C.muted }}>Automated programmatic inventory allocation</p>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        flex: 1,
+                        height: 3,
+                        borderRadius: 2,
+                        background: i <= aiStep ? C.gold : "rgba(255,255,255,0.05)",
+                        transition: "all 0.3s",
+                      }}
+                    />
+                  ))}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  {["Threshold", "Parameters", "Manifest"].map((label, i) => (
+                    <span key={i} style={{ color: i === aiStep ? C.gold : C.muted }}>
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ padding: "0 2rem 2rem" }}>
+                <AnimatePresence mode="wait">
+                  {aiStep === 0 && (
+                    <motion.div
+                      key="step0"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{ marginBottom: "1.5rem" }}
+                    >
+                      <p style={{ color: C.slate, fontSize: "14px", marginBottom: "1.25rem" }}>
+                        Specify clear threshold allocation budget target:
+                      </p>
+                      <div style={{ position: "relative" }}>
+                        <span
+                          style={{
+                            position: "absolute",
+                            left: 14,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: C.muted,
+                            fontWeight: 700,
+                          }}
+                        >
+                          ₹
+                        </span>
+                        <input
+                          type="number"
+                          value={aiBudget}
+                          onChange={(e) => setAiBudget(e.target.value)}
+                          style={{
+                            width: "100%",
+                            paddingLeft: 32,
+                            paddingRight: 14,
+                            paddingTop: 12,
+                            paddingBottom: 12,
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            borderRadius: "12px",
+                            background: "rgba(3,7,18,0.4)",
+                            fontSize: "16px",
+                            color: C.ink,
+                            outline: "none",
+                          }}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                  {aiStep === 1 && (
+                    <motion.div
+                      key="step1"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{ marginBottom: "1.5rem" }}
+                    >
+                      <p style={{ color: C.slate, fontSize: "14px", marginBottom: "1.25rem" }}>
+                        Select dynamic event distribution models:
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {[
+                          { key: "kids", emoji: "🧒", label: "Kids Friendly", desc: "Twinkling Star, Fancy Pencil, Novelties" },
+                          { key: "sound", emoji: "💥", label: "Sound Crackers", desc: "Bombs, Atom Bombs, One Sound" },
+                          { key: "night", emoji: "🚀", label: "Night Sky Display", desc: "Rockets, Repeating Shots, Sky Shots" },
+                          { key: "kidsnight", emoji: "✨", label: "Kids Night Crackers", desc: "Sparklers, Flower Pots, Fountains" },
+                        ].map(({ key, emoji, label, desc }) => (
+                          <label
+                            key={key}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 14,
+                              padding: "12px 14px",
+                              border: `1px solid ${aiPreferences[key] ? C.gold : "rgba(255,255,255,0.06)"}`,
+                              borderRadius: "12px",
+                              background: aiPreferences[key] ? "rgba(245,158,11,0.04)" : "rgba(3,7,18,0.2)",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={aiPreferences[key]}
+                              onChange={(e) =>
+                                setAiPreferences((prev) => ({ ...prev, [key]: e.target.checked }))
+                              }
+                              style={{ display: "none" }}
+                            />
+                            <span style={{ fontSize: "1.25rem" }}>{emoji}</span>
+                            <div style={{ flex: 1 }}>
+                              <p
+                                style={{
+                                  fontWeight: 700,
+                                  fontSize: "14px",
+                                  color: aiPreferences[key] ? C.gold : C.ink,
+                                }}
+                              >
+                                {label}
+                              </p>
+                              <p style={{ fontSize: "11px", color: C.muted }}>{desc}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                  {aiStep === 2 && (
+                    <motion.div
+                      key="step2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{ marginBottom: "1.5rem" }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "1.25rem",
+                        }}
+                      >
+                        <div>
+                          <p style={{ fontWeight: 700, color: C.ink }}>
+                            {Object.keys(suggestedCart).length} Units Aggregated
+                          </p>
+                          <p style={{ fontSize: "13px", color: C.gold }}>
+                            Evaluation: ≈ ₹{suggestedTotals}
+                          </p>
+                        </div>
+                        <button
+                          onClick={generateSuggestions}
+                          className="btn-outline"
+                          style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px" }}
+                        >
+                          Regenerate
+                        </button>
+                      </div>
+                      {Object.keys(suggestedCart).length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "2rem 0", color: C.muted }}>
+                          <p style={{ fontSize: "14px" }}>No profiles match specifications.</p>
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            maxHeight: "35vh",
+                            overflowY: "auto",
+                          }}
+                        >
+                          {Object.entries(suggestedCart).map(([serial, qty]) => {
+                            const product = products.find((p) => p.serial_number === serial);
+                            if (!product) return null;
+                            const origPr = roundPrice(product.price);
+                            const discAmt = (origPr * product.discount) / 100;
+                            const priceAfterDiscount = formatPrice(origPr - discAmt);
+                            const imageSrc =
+                              Array.isArray(product.images) && product.images.length > 0
+                                ? product.images.find((img) => !img.includes("/video/")) || product.images[0]
+                                : need;
+                            return (
+                              <div
+                                key={serial}
+                                className="glassmorphic"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 12,
+                                  padding: "10px",
+                                  borderRadius: "12px",
+                                }}
+                              >
+                                <img
+                                  src={imageSrc}
+                                  alt={product.productname}
+                                  style={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: "6px",
+                                    objectFit: "cover",
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p
+                                    style={{
+                                      fontWeight: 700,
+                                      fontSize: "13px",
+                                      color: C.ink,
+                                      display: "-webkit-box",
+                                      WebkitLineClamp: 1,
+                                      WebkitBoxOrient: "vertical",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    {product.productname}
+                                  </p>
+                                  <p style={{ fontSize: "12px", color: C.gold, marginTop: 2 }}>
+                                    ₹{priceAfterDiscount} × {qty}
+                                  </p>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => removeFromSuggestedCart(product)}
+                                    className="glassmorphic"
+                                    style={{
+                                      width: 24,
+                                      height: 24,
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      color: C.slate,
+                                    }}
+                                  >
+                                    <FaMinus style={{ fontSize: 8 }} />
+                                  </button>
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      fontSize: "13px",
+                                      minWidth: 20,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {qty}
+                                  </span>
+                                  <button
+                                    onClick={() => addToSuggestedCart(product)}
+                                    className="glassmorphic"
+                                    style={{
+                                      width: 24,
+                                      height: 24,
+                                      borderRadius: "6px",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      color: C.slate,
+                                    }}
+                                  >
+                                    <FaPlus style={{ fontSize: 8 }} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {Object.keys(suggestedCart).length > 0 && (
+                        <button
+                          onClick={addSuggestedToCart}
+                          className="btn-primary"
+                          style={{
+                            width: "100%",
+                            justifyContent: "center",
+                            marginTop: "1.25rem",
+                            background: "linear-gradient(135deg, #10b981, #059669)",
+                            color: "#fff",
+                          }}
+                        >
+                          ✓ Append to Active Manifest
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: 16,
+                  }}
+                >
+                  {aiStep > 0 ? (
+                    <button
+                      onClick={handleAiBack}
+                      className="btn-outline"
+                      style={{ padding: "10px 20px", borderRadius: "10px" }}
+                    >
+                      Back
+                    </button>
+                  ) : (
+                    <div />
+                  )}
+                  <button
+                    onClick={handleAiNext}
+                    className="btn-primary"
+                    style={{ padding: "10px 24px", borderRadius: "10px" }}
+                  >
+                    {aiStep < 2 ? "Next" : "Generate"}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <motion.section 
-        style={{ y: heroY, opacity: heroOpacity }} 
-        className="relative pt-20 md:pt-32 pb-8 md:pb-12 px-4 sm:px-8 lg:px-12"
-      >
+      {/* 2nd - Banners Section */}
+      <section className="relative pt-24 md:pt-32 pb-8 md:pb-12 px-4 sm:px-8 lg:px-12">
         <div className="max-w-6xl mx-auto">
-          <div 
+          <div
             className="relative rounded-t-2xl overflow-hidden w-full glassmorphic"
             style={{
-              height: "clamp(150px, 38vw, 420px)",   // Reduced on mobile
-              boxShadow: "0 30px 70px rgba(0,0,0,0.8)"
+              height: "clamp(150px, 38vw, 420px)",
+              boxShadow: "0 30px 70px rgba(0,0,0,0.8)",
             }}
           >
             <AnimatePresence mode="wait">
-              {banners.map((b, i) => slide === i && (
-                <motion.div 
-                  key={b.id} 
-                  initial={{ opacity: 0, scale: 1.02 }} 
-                  animate={{ opacity: 1, scale: 1 }} 
-                  exit={{ opacity: 0 }} 
-                  transition={{ duration: 0.5 }} 
-                  className="absolute h-full inset-0 flex items-center justify-center bg-slate-950/40"
-                >
-                  <img 
-                    src={b.image_url.startsWith("https") ? b.image_url : `${API_BASE_URL}${b.image_url}`} 
-                    alt={`Banner ${b.id}`} 
-                    className="w-full h-full object-contain max-w-full max-h-full p-2"
-                  />
-                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-void/40 via-transparent to-transparent" />
-                </motion.div>
-              ))}
+              {banners.map(
+                (b, i) =>
+                  slide === i && (
+                    <motion.div
+                      key={b.id}
+                      initial={{ opacity: 0, scale: 1.02 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute h-full inset-0 flex items-center justify-center bg-slate-950/40"
+                    >
+                      <img
+                        src={b.image_url.startsWith("https") ? b.image_url : `${API_BASE_URL}${b.image_url}`}
+                        alt={`Banner ${b.id}`}
+                        className="w-full h-full object-contain max-w-full max-h-full p-2"
+                      />
+                      <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-void/40 via-transparent to-transparent" />
+                    </motion.div>
+                  )
+              )}
             </AnimatePresence>
 
             {banners.length > 1 && (
               <div className="absolute bottom-4 right-4 flex gap-2 z-10">
                 {banners.map((_, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => setSlide(i)} 
+                  <button
+                    key={i}
+                    onClick={() => setSlide(i)}
                     className="h-1.5 rounded-full transition-all bg-white"
                     style={{
                       width: i === slide ? "28px" : "8px",
-                      opacity: i === slide ? 1 : 0.3
+                      opacity: i === slide ? 1 : 0.3,
                     }}
                   />
                 ))}
@@ -712,224 +3048,708 @@ export default function Home() {
           </div>
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-4 border-x border-b bg-slate-900/20 backdrop-blur-xl rounded-b-2xl" style={{ borderColor: C.border }}>
-            {[["200+", "Products"], ["500+", "Clients"], ["100%", "Satisfied"], ["15+", "Years"]].map(([v, l], i) => (
-              <div key={i} className="py-4 md:py-5 text-center border-r last:border-0" style={{ borderColor: C.border }}>
+          <div
+            className="grid grid-cols-4 border-x border-b bg-slate-900/20 backdrop-blur-xl rounded-b-2xl"
+            style={{ borderColor: C.border }}
+          >
+            {[
+              ["200+", "Products"],
+              ["500+", "Clients"],
+              ["100%", "Satisfied"],
+              ["15+", "Years"],
+            ].map(([v, l], i) => (
+              <div
+                key={i}
+                className="py-4 md:py-5 text-center border-r last:border-0"
+                style={{ borderColor: C.border }}
+              >
                 <div className="font-extrabold text-xl md:text-2xl text-white tracking-tight">{v}</div>
-                <div className="text-xs uppercase font-bold tracking-widest mt-1" style={{ color: C.slate }}>{l}</div>
+                <div className="text-xs uppercase font-bold tracking-widest mt-1" style={{ color: C.slate }}>
+                  {l}
+                </div>
               </div>
             ))}
           </div>
         </div>
-      </motion.section>
-
-      <section className="py-2 px-4 sm:px-8 lg:px-12 border-y bg-slate-950/20 backdrop-blur-md" style={{ borderColor: C.border }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-4">
-            <div>
-              <p className="label mb-2">Curated Inventories</p>
-              <h2 className="display text-3xl md:text-5xl" style={{ color: C.ink }}>Fast-Running Products</h2>
-            </div>
-            <div className="flex gap-2">
-              <div className="w-12 h-1.5 rounded-full" style={{ background: C.gold }} />
-              <div className="w-3 h-1.5 rounded-full rgba(255,255,255,0.1)" />
-            </div>
-          </div>
-          <div className="flex overflow-x-auto gap-6 pb-6 snap-x snap-mandatory hscroll">
-            {fastRunning.map((product, i) => {
-              const orig = parseFloat(product.price)
-              const final = (orig - orig * product.discount / 100).toFixed(2)
-              return (
-                <motion.div key={product.serial_number}
-                  initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: i * 0.04 }} viewport={{ once: true }}
-                  className="flex-none w-[290px] snap-center rounded-2xl border bg-void overflow-hidden"
-                  style={{ borderColor: C.border, transition: "all 0.3s ease" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold; e.currentTarget.style.transform = "translateY(-5px)" }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "" }}>
-                  <div className="relative">
-                    <ModernCarousel media={product.image} />
-                    <div className="absolute top-4 left-4"><span className="pill bg-amber-500/10 backdrop-blur-md">{product.discount}% OFF</span></div>
-                    <button onClick={() => { setSelProduct(product); setShowModal(true) }}
-                      className="absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center backdrop-blur-md border bg-void/30"
-                      style={{ borderColor: C.borderH }}>
-                      <FaInfoCircle style={{ color: C.gold, fontSize: "14px" }} />
-                    </button>
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-extrabold text-base mb-3 line-clamp-1" style={{ color: C.ink }}>{product.productname}</h3>
-                    <div className="flex items-baseline gap-2 mb-5">
-                      <span className="text-xs line-through" style={{ color: C.muted }}>₹{orig}</span>
-                      <span className="text-2xl font-black tracking-tight" style={{ color: C.gold }}>₹{final}</span>
-                      <span className="text-xs font-semibold" style={{ color: C.slate }}>/{product.per}</span>
-                    </div>
-                    <button onClick={() => navigate("/price-list")} className="btn-primary w-full justify-center text-sm py-3 rounded-xl">
-                      Shop Now <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
       </section>
 
-      <section className="py-32 px-4 sm:px-8 lg:px-12">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-            <motion.div initial={{ opacity: 0, scale: 0.96 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }} viewport={{ once: true }} className="relative">
-              <div className="relative rounded-2xl overflow-hidden border" style={{ borderColor: C.border }}>
-                <img src={about || "/placeholder.svg"} alt="Sri Palaniyappa Crackers" className="w-full h-96 object-cover opacity-80" />
-              </div>
-              <div className="absolute -top-5 -left-5 w-20 h-20 rounded-2xl flex flex-col items-center justify-center glassmorphic shadow-2xl">
-                <span className="font-black text-2xl text-white leading-none">15</span>
-                <span className="text-[10px] font-bold tracking-wider mt-1" style={{ color: C.gold }}>YEARS</span>
-              </div>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, x: 25 }} whileInView={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }} viewport={{ once: true }} className="space-y-8">
+      {/* 3rd - Fast Moving Products Section (if any) */}
+      {fastRunning.length > 0 && (
+        <section
+          className="py-8 px-4 sm:px-8 lg:px-12 border-y bg-slate-950/20 backdrop-blur-md"
+          style={{ borderColor: C.border }}
+        >
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
               <div>
-                <p className="label mb-2">Our Architecture</p>
+                <p className="label mb-2">Curated Inventories</p>
                 <h2 className="display text-3xl md:text-5xl" style={{ color: C.ink }}>
-                  Welcome to <br/><span style={{ color: C.gold }}>Sri Palaniyappa Crackers</span>
+                  Fast-Running Products
                 </h2>
               </div>
-              <div className="space-y-5 text-base leading-relaxed" style={{ color: C.slate }}>
-                <p>Sri Palaniyappa Crackers has transitioned from an uncompromised manufacturing core into one of Sivakasi's premier seasonal operations — designed securely around the criteria of safety and premium verification standards.</p>
-                <p>We preserve explicit tracking matrices along standard corporate distribution networks, catering baseline value structures to wedding organizations, regional milestones, and institutional galas.</p>
+              <div className="flex gap-2">
+                <div className="w-12 h-1.5 rounded-full" style={{ background: C.gold }} />
+                <div className="w-3 h-1.5 rounded-full rgba(255,255,255,0.1)" />
               </div>
-              <div className="flex items-start gap-4 p-5 rounded-2xl glassmorphic">
-                <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: C.gold }} />
-                <p className="text-xs leading-relaxed" style={{ color: C.slate }}>Notice: In strict alignment with legislative protocols, e-commerce clearing functions are wholly absent. Systems function for structural registry cataloguing only — contact our office desks explicitly for manifest requests.</p>
-              </div>
-              <button onClick={() => navigate("/about-us")} className="btn-outline">Our Full History <ArrowRight className="w-4 h-4" /></button>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-28 px-4 sm:px-8 lg:px-12 border-t bg-slate-950/20 backdrop-blur-md" style={{ borderColor: C.border }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-4">
-            <div>
-              <p className="label mb-2">Structural Categories</p>
-              <h2 className="display text-3xl md:text-5xl" style={{ color: C.ink }}>The Grand Catalogues</h2>
             </div>
-            <p className="serif italic text-base" style={{ color: C.slate, maxWidth: "280px" }}>
-              Six configured categories matched according to distinct baseline event blueprints.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map(({ name, icon: Icon, description }, i) => (
-              <motion.div key={i}
-                initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: i * 0.04 }} viewport={{ once: true }}
-                className="rounded-2xl p-6 flex flex-col justify-between glassmorphic"
-                style={{ transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.background = "rgba(15, 23, 42, 0.7)" }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = ""; e.currentTarget.style.background = C.glass }}>
-                <div>
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center border bg-white/5"
-                      style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-                      <Icon className="w-5 h-5" style={{ color: C.gold }} />
+            <div className="flex overflow-x-auto gap-6 pb-6 snap-x snap-mandatory hscroll">
+              {fastRunning.map((product, i) => {
+                const orig = roundPrice(product.price);
+                const discountAmt = orig * ((product.discount || 0) / 100);
+                const final = formatPrice(orig - discountAmt);
+                const count = cart[product.serial_number] || 0;
+                const isSelected = count > 0;
+                return (
+                  <motion.div
+                    key={product.serial_number || i}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.04 }}
+                    viewport={{ once: true }}
+                    className="flex-none w-[290px] snap-center rounded-2xl border bg-void overflow-hidden"
+                    style={{
+                      borderColor: isSelected ? C.gold : C.border,
+                      transition: "all 0.3s ease",
+                      boxShadow: isSelected ? "0 10px 30px rgba(245, 158, 11, 0.08)" : "none",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = C.gold;
+                      e.currentTarget.style.transform = "translateY(-5px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = isSelected ? C.gold : C.border;
+                      e.currentTarget.style.transform = "";
+                    }}
+                  >
+                    <div className="relative">
+                      <ModernCarousel
+                        media={product.images || product.image}
+                        onImageClick={() => handleImageClick(product.images || product.image)}
+                        isCard
+                      />
+                      {product.discount > 0 && (
+                        <div className="absolute top-4 left-4 z-10">
+                          <span className="pill bg-amber-500/10 backdrop-blur-md">
+                            {formatPercentage(product.discount)}% OFF
+                          </span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleShowDetails(product)}
+                        className="absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center backdrop-blur-md border bg-void/30 z-10"
+                        style={{ borderColor: C.borderH }}
+                      >
+                        <FaInfoCircle style={{ color: C.gold, fontSize: "14px" }} />
+                      </button>
                     </div>
-                    <span className="text-3xl font-black opacity-15 tracking-tight" style={{ color: C.gold }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <h3 className="font-extrabold text-lg mb-2" style={{ color: C.ink }}>{name}</h3>
-                  <p className="text-sm leading-relaxed mb-8" style={{ color: C.slate }}>{description}</p>
-                </div>
-                <button onClick={() => navigate("/price-list")} className="btn-outline text-xs py-3 justify-center w-full rounded-xl">
-                  Explore Parameters <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </motion.div>
-            ))}
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-1">
+                        <p style={{ color: C.gold, fontSize: "11px", fontWeight: 800 }}>
+                          {product.serial_number}
+                        </p>
+                      </div>
+                      <h3 className="font-extrabold text-base mb-3 line-clamp-1" style={{ color: C.ink }}>
+                        {product.productname}
+                      </h3>
+                      <div className="flex items-baseline gap-2 mb-5">
+                        {product.discount > 0 && (
+                          <span className="text-xs line-through" style={{ color: C.muted }}>
+                            ₹{formatPrice(orig)}
+                          </span>
+                        )}
+                        <span className="text-2xl font-black tracking-tight" style={{ color: C.gold }}>
+                          ₹{final}
+                        </span>
+                        <span className="text-xs font-semibold" style={{ color: C.slate }}>
+                          /{product.per}
+                        </span>
+                      </div>
+                      <div>
+                        <AnimatePresence mode="wait">
+                          {isSelected ? (
+                            <motion.div
+                              key="qty"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                background: C.gold,
+                                borderRadius: "10px",
+                                padding: 4,
+                                width: "100%",
+                              }}
+                            >
+                              <button
+                                onClick={() => removeFromCart(product)}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  background: "rgba(3,7,18,0.2)",
+                                  border: "none",
+                                  borderRadius: "8px",
+                                  color: C.void,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <FaMinus style={{ fontSize: 9 }} />
+                              </button>
+                              <span
+                                style={{
+                                  color: C.void,
+                                  fontWeight: 800,
+                                  fontSize: "14px",
+                                  minWidth: "1.5rem",
+                                  textAlign: "center",
+                                }}
+                              >
+                                {count}
+                              </span>
+                              <button
+                                onClick={() => addToCart(product)}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  background: "rgba(3,7,18,0.2)",
+                                  border: "none",
+                                  borderRadius: "8px",
+                                  color: C.void,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <FaPlus style={{ fontSize: 9 }} />
+                              </button>
+                            </motion.div>
+                          ) : (
+                            <motion.button
+                              key="add"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              onClick={() => addToCart(product)}
+                              className="btn-primary w-full justify-center text-sm py-3 rounded-xl"
+                            >
+                              Add to Cart
+                            </motion.button>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="py-32 px-4 sm:px-8 lg:px-12 relative overflow-hidden bg-void border-t" style={{ borderColor: C.border }}>
-        <div className="absolute inset-0 opacity-5 flex items-center justify-center pointer-events-none select-none">
-          <span className="display font-black text-white tracking-widest text-[14rem]">MANIFEST</span>
-        </div>
-        <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} viewport={{ once: true }}>
-            <p className="label mb-3">Institutional Logistics</p>
-            <h2 className="display text-4xl md:text-6xl mb-8" style={{ color: C.ink }}>
-              Illuminating Your <br/>Highest Milestones
-            </h2>
-            <p className="mb-12 text-base mx-auto max-w-xl leading-relaxed" style={{ color: C.slate }}>
-              Examine our industrial volume structures, aggregate your specific structural logistics, and log a baseline intent portfolio. Response verifications exit within twenty-four operational hours.
+      {/* 4th - All Components from Pricelist.jsx (Full Catalog & Filters) */}
+      <main
+        id="pricelist"
+        style={{
+          paddingTop: "4rem",
+          paddingBottom: "8rem",
+          maxWidth: "80rem",
+          margin: "0 auto",
+          paddingLeft: "1.5rem",
+          paddingRight: "1.5rem",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: "3rem" }}
+        >
+          <div>
+            <p className="label">Carts</p>
+            <h1 className="display text-3xl md:text-5xl" style={{ color: C.ink, marginTop: 4 }}>
+              Happy Shopping
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3 w-full">
+            <div className="flex min-w-[200px] relative">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={handleSearchInputChange}
+                placeholder="Search products"
+                className="w-[200px] bg-[rgba(15,23,42,0.4)] border border-[rgba(255,255,255,0.06)] 
+                          rounded-2xl text-white py-3 px-5 pl-11 focus:outline-none focus:border-yellow-500 transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => setShowAiModal(true)}
+              className="btn-outline whitespace-nowrap px-5 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-colors"
+            >
+              🤖 <span>Smart-AI</span>
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: "1.5rem" }}>
+          <p className="label" style={{ marginBottom: "0.5rem" }}>
+            Categories
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <button
+              className="hidden lg:flex glassmorphic"
+              onClick={() => typeScrollRef.current?.scrollBy({ left: -240, behavior: "smooth" })}
+              style={{
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+                borderRadius: "10px",
+                cursor: "pointer",
+                alignItems: "center",
+                justifyContent: "center",
+                color: C.gold,
+              }}
+            >
+              <FaArrowLeft style={{ fontSize: 11 }} />
+            </button>
+            <div
+              ref={typeScrollRef}
+              className="hscroll"
+              style={{ display: "flex", gap: "10px", overflowX: "auto", padding: "4px 0 8px", flex: 1 }}
+            >
+              {productTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className={`type-chip ${selectedType === type ? "active" : ""}`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+            <button
+              className="hidden lg:flex glassmorphic"
+              onClick={() => typeScrollRef.current?.scrollBy({ left: 240, behavior: "smooth" })}
+              style={{
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+                borderRadius: "10px",
+                cursor: "pointer",
+                alignItems: "center",
+                justifyContent: "center",
+                color: C.gold,
+              }}
+            >
+              <FaArrowRight style={{ fontSize: 11 }} />
+            </button>
+          </div>
+        </motion.div>
+
+        {brandList.length > 1 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginBottom: "3rem" }}>
+            <p className="label" style={{ marginBottom: "0.5rem" }}>
+              Brands
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-6">
-              <button onClick={() => navigate("/price-list")} className="btn-primary">
-                View Corporate Catalogues <ArrowRight className="w-5 h-5" />
-              </button>
-              <button onClick={() => navigate("/contact-us")} className="btn-outline">
-                Contact Desk
-              </button>
+            <div
+              className="hscroll"
+              style={{ display: "flex", gap: "10px", overflowX: "auto", padding: "4px 0 8px" }}
+            >
+              {brandList.map((brand) => {
+                const isSelected = selectedBrand === brand;
+                return (
+                  <button
+                    key={brand}
+                    onClick={() => {
+                      setSelectedBrand(brand);
+                      setBrandSearchInput("");
+                      setBrandSearchTerm("");
+                    }}
+                    className={`brand-chip ${isSelected ? "active" : ""}`}
+                  >
+                    {brand === "All" ? "All" : brand}
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
-        </div>
-      </section>
+        )}
 
-      <section className="py-28 px-4 sm:px-8 lg:px-12 border-t bg-slate-950/20 backdrop-blur-md" style={{ borderColor: C.border }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="label mb-2">Operational Analytics</p>
-            <h2 className="display text-3xl md:text-4xl" style={{ color: C.ink }}>Established Market Parameters</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {statsData.map((s, i) => <StatCard key={i} {...s} delay={i * 0.06} />)}
-          </div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: "4rem" }}>
+          <button
+            onClick={downloadPDF}
+            className="btn-outline"
+            style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}
+          >
+            <FaDownload style={{ fontSize: "14px", color: C.gold }} /> Download Pricelist
+          </button>
         </div>
-      </section>
 
+        {Object.entries(grouped).map(([type, items]) => (
+          <motion.section
+            key={type}
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            style={{ marginBottom: "5rem" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2rem" }}>
+              <div style={{ width: 3, height: 24, background: C.gold, borderRadius: "2px", flexShrink: 0 }} />
+              <h2 className="display text-xl md:text-2xl" style={{ color: C.ink, textTransform: "capitalize" }}>
+                {type.replace(/_/g, " ")}
+              </h2>
+              <div
+                style={{
+                  flex: 1,
+                  height: "1px",
+                  background: `linear-gradient(to right, ${C.border}, transparent)`,
+                }}
+              />
+              <span className="pill text-[11px]">{items.length} units</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {items.map((product) => (
+                <ProductCard
+                  key={product.serial_number}
+                  product={product}
+                  count={cart[product.serial_number] || 0}
+                  onAdd={addToCart}
+                  onRemove={removeFromCart}
+                  onShowDetails={handleShowDetails}
+                  onImageClick={handleImageClick}
+                />
+              ))}
+            </div>
+          </motion.section>
+        ))}
+
+        {Object.keys(grouped).length === 0 && (
+          <div style={{ textAlign: "center", padding: "6rem 0" }}>
+            <p className="display text-xl" style={{ color: C.muted }}>
+              Zero Records Returned
+            </p>
+            <p className="serif" style={{ color: C.muted, fontSize: "14px", marginTop: 6, fontStyle: "italic" }}>
+              No entries resolve against parameters.
+            </p>
+            <button
+              onClick={() => {
+                clearSearch();
+                clearBrandSearch();
+                setSelectedBrand("All");
+                setSelectedType("All");
+              }}
+              className="btn-outline"
+              style={{ marginTop: "1.5rem" }}
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
+      </main>
+
+      {/* Checkout Modal ("Clearing Protocol") */}
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-md bg-void/60"
+            onClick={() => setShowModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glassmorphic max-w-md w-full max-h-[80vh] overflow-y-auto"
+              style={{ borderRadius: "24px", boxShadow: "0 30px 60px rgba(0,0,0,0.6)" }}
+            >
+              <div style={{ padding: "2rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.5rem" }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      background: `rgba(245,158,11,0.05)`,
+                      border: "1px solid rgba(245,158,11,0.15)",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <ShoppingCart style={{ width: 16, height: 14, color: C.gold }} />
+                  </div>
+                  <div>
+                    <h2 className="display text-lg" style={{ color: C.ink }}>
+                      Clearing Protocol
+                    </h2>
+                    <p style={{ fontSize: "12px", color: C.muted }}>
+                      Fill customer credentials to authenticate order registry
+                    </p>
+                  </div>
+                </div>
+
+                {freeCartItem && (
+                  <div
+                    style={{
+                      background: "rgba(16,185,129,0.05)",
+                      border: "1px solid rgba(16,185,129,0.15)",
+                      borderRadius: "10px",
+                      padding: "10px 14px",
+                      marginBottom: "1rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <Gift style={{ width: 14, height: 14, color: C.green, flexShrink: 0 }} />
+                    <p style={{ fontSize: "12px", color: C.green, fontWeight: 700 }}>
+                      Promotional Item Loaded: "{freeCartItem.productname}"
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {["customer_name", "address", "mobile_number", "email"].map((field) => (
+                    <div key={field}>
+                      <p
+                        className="text-xs font-bold tracking-wider uppercase mb-1.5"
+                        style={{ color: C.gold, fontSize: "10px" }}
+                      >
+                        {field.replace(/_/g, " ")}
+                        {field !== "email" ? " *" : ""}
+                      </p>
+                      <input
+                        name={field}
+                        type={field === "email" ? "email" : "text"}
+                        placeholder={`Provide ${field.replace(/_/g, " ")}`}
+                        value={customerDetails[field]}
+                        onChange={handleInputChange}
+                        style={{
+                          width: "100%",
+                          padding: "12px 14px",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: "10px",
+                          background: "rgba(3,7,18,0.4)",
+                          fontSize: "14px",
+                          color: C.ink,
+                          outline: "none",
+                        }}
+                        required={field !== "email"}
+                      />
+                    </div>
+                  ))}
+                  <div>
+                    <p
+                      className="text-xs font-bold tracking-wider uppercase mb-1.5"
+                      style={{ color: C.gold, fontSize: "10px" }}
+                    >
+                      State Jurisdiction *
+                    </p>
+                    <select
+                      name="state"
+                      value={customerDetails.state}
+                      onChange={(e) =>
+                        setCustomerDetails((prev) => ({ ...prev, state: e.target.value, district: "" }))
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "10px",
+                        background: "rgba(3,7,18,0.4)",
+                        fontSize: "14px",
+                        color: C.ink,
+                        outline: "none",
+                      }}
+                      required
+                    >
+                      <option value="">Select State</option>
+                      {states.map((s) => (
+                        <option key={s.name} value={s.name}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {customerDetails.state && (
+                    <div>
+                      <p
+                        className="text-xs font-bold tracking-wider uppercase mb-1.5"
+                        style={{ color: C.gold, fontSize: "10px" }}
+                      >
+                        City Core Matrix *
+                      </p>
+                      <select
+                        name="district"
+                        value={customerDetails.district}
+                        onChange={handleInputChange}
+                        style={{
+                          width: "100%",
+                          padding: "12px 14px",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: "10px",
+                          background: "rgba(3,7,18,0.4)",
+                          fontSize: "14px",
+                          color: C.ink,
+                          outline: "none",
+                        }}
+                        required
+                      >
+                        <option value="">Select Locality</option>
+                        {districts.map((d) => (
+                          <option key={d.id} value={d.name}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="glassmorphic" style={{ padding: "1rem", borderRadius: "14px" }}>
+                    <p
+                      className="text-xs font-bold tracking-wider uppercase mb-2"
+                      style={{ color: C.gold }}
+                    >
+                      Registry Summary
+                    </p>
+                    <SummaryRows />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "1.5rem", display: "flex", gap: 12 }}>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="btn-outline"
+                    style={{ flex: 1, justifyContent: "center", borderRadius: "12px" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleFinalCheckout}
+                    disabled={isBookingLoading}
+                    className="btn-primary"
+                    style={{
+                      flex: 1.5,
+                      justifyContent: "center",
+                      borderRadius: "12px",
+                      opacity: isBookingLoading ? 0.7 : 1,
+                    }}
+                  >
+                    {isBookingLoading ? "Processing…" : "Confirm Registry"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 5th - Footer */}
       <footer className="border-t bg-slate-950/40 backdrop-blur-xl" style={{ borderColor: C.border }}>
-        <div className="px-4 sm:px-8 lg:px-12 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 border-b bg-void/50" style={{ borderColor: C.border }}>
-          <span className="text-white font-extrabold tracking-wider text-sm uppercase">Sri Palaniyappa Crackers</span>
-          <span className="text-xs font-bold tracking-widest" style={{ color: C.gold }}>SIVAKASI · EST. 2009</span>
+        <div
+          className="px-4 sm:px-8 lg:px-12 py-5 flex flex-col sm:flex-row items-center justify-between gap-4 border-b bg-void/50"
+          style={{ borderColor: C.border }}
+        >
+          <span className="text-white font-extrabold tracking-wider text-sm uppercase">
+            Sri Palaniyappa Crackers
+          </span>
+          <span className="text-xs font-bold tracking-widest" style={{ color: C.gold }}>
+            SIVAKASI · EST. 2009
+          </span>
         </div>
         <div className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 py-20">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 mb-16">
             <div>
-              <h3 className="text-white font-extrabold text-xs uppercase tracking-widest mb-5">Corporate Frame</h3>
-              <p className="text-sm leading-relaxed mb-5" style={{ color: C.slate }}>Premium structural fireworks crafted matching strict high-tier regulatory parameters. Anchoring monumental architectures of light safely across generations.</p>
-              <button onClick={() => navigate("/about-us")} className="text-xs font-bold flex items-center gap-2 transition-colors" style={{ color: C.gold }}>
+              <h3 className="text-white font-extrabold text-xs uppercase tracking-widest mb-5">
+                Corporate Frame
+              </h3>
+              <p className="text-sm leading-relaxed mb-5" style={{ color: C.slate }}>
+                Premium structural fireworks crafted matching strict high-tier regulatory parameters. Anchoring
+                monumental architectures of light safely across generations.
+              </p>
+              <button
+                onClick={() => navigate("/about-us")}
+                className="text-xs font-bold flex items-center gap-2 transition-colors"
+                style={{ color: C.gold }}
+              >
                 Corporate Parameters <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
             <div>
-              <h3 className="text-white font-extrabold text-xs uppercase tracking-widest mb-5">Communications Desk</h3>
+              <h3 className="text-white font-extrabold text-xs uppercase tracking-widest mb-5">
+                Communications Desk
+              </h3>
               <div className="space-y-3 text-sm" style={{ color: C.slate }}>
-                <p><span className="text-white font-bold">Office Core:</span><br />Vaanakkar street, Salem, Tamil Nadu</p>
-                <a href="tel:+918124259430" className="block hover:text-white transition-colors">+91 81242 59430</a>
-                <a href="mailto:sreepalaniyappacrackers@gmail.com" className="block hover:text-white transition-colors">sreepalaniyappacrackers@gmail.com</a>
+                <p>
+                  <span className="text-white font-bold">Office Core:</span>
+                  <br />
+                  Vaanakkar street, Salem, Tamil Nadu
+                </p>
+                <a href="tel:+918124259430" className="block hover:text-white transition-colors">
+                  +91 81242 59430
+                </a>
+                <a
+                  href="mailto:sreepalaniyappacrackers@gmail.com"
+                  className="block hover:text-white transition-colors"
+                >
+                  sreepalaniyappacrackers@gmail.com
+                </a>
               </div>
             </div>
             <div>
-              <h3 className="text-white font-extrabold text-xs uppercase tracking-widest mb-5">Navigation Registry</h3>
+              <h3 className="text-white font-extrabold text-xs uppercase tracking-widest mb-5">
+                Navigation Registry
+              </h3>
               <ul className="space-y-3 text-sm">
-                {navLinks.map(link => (
-                  <li key={link}>
-                    <a href={link === "Home" ? `/` : `/${link.toLowerCase().replace(/ /g, "-")}`}
-                      className="hover:text-white flex items-center gap-2 transition-colors" style={{ color: C.slate }}>
-                      <span style={{ color: C.gold }}>·</span> {link}
-                    </a>
-                  </li>
-                ))}
+                {["Home", "About Us", "Price List", "Safety Tips", "Contact Us"].map((link) => {
+                  const isPricelist = link === "Price List";
+                  return (
+                    <li key={link}>
+                      <a
+                        href={
+                          link === "Home"
+                            ? "/"
+                            : isPricelist
+                            ? "/#pricelist"
+                            : `/${link.toLowerCase().replace(/ /g, "-")}`
+                        }
+                        onClick={(e) => {
+                          if (isPricelist) {
+                            e.preventDefault();
+                            document.getElementById("pricelist")?.scrollIntoView({ behavior: "smooth" });
+                          }
+                        }}
+                        className="hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                        style={{ color: C.slate }}
+                      >
+                        <span style={{ color: C.gold }}>·</span> {link}
+                      </a>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
           <div className="text-center space-y-4 pt-8 border-t border-white/5">
             <p className="text-xs leading-relaxed mx-auto max-w-3xl" style={{ color: C.muted }}>
-              Statutory Declaration: Adhering meticulously to the 2018 supreme judicial parameters of India, digital programmatic clearing structures for firecrackers are entirely unauthorized. Items mapped on this node operate strictly for manifest inventory cataloguing configurations.
+              Statutory Declaration: Adhering meticulously to the 2018 supreme judicial parameters of India,
+              digital programmatic clearing structures for firecrackers are entirely unauthorized. Items mapped on
+              this node operate strictly for manifest inventory cataloguing configurations.
             </p>
             <p className="text-xs" style={{ color: C.muted }}>
-              © 2026 <span style={{ color: C.gold }}>Sri Palaniyappa Crackers</span>. All rights reserved. Architecture engineered by <span style={{ color: C.gold }}>SPD Solutions</span>
+              © 2026 <span style={{ color: C.gold }}>Sri Palaniyappa Crackers</span>. All rights reserved. Architecture
+              engineered by <span style={{ color: C.gold }}>SPD Solutions</span>
             </p>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }

@@ -13,7 +13,7 @@ const C = {
 const navItems = [
   { name: "Home", path: "/", icon: Home },
   { name: "About", path: "/about-us", icon: Info },
-  { name: "Price List", path: "/price-list", icon: ShoppingCart },
+  { name: "Price List", path: "/#pricelist", icon: ShoppingCart },
   { name: "Track", path: "/status", icon: MapPin },
   { name: "Safety", path: "/safety-tips", icon: ShieldCheck },
   { name: "Contact", path: "/contact-us", icon: PhoneCall },
@@ -34,13 +34,29 @@ export default function Navbar() {
   const [activeTab, setActiveTab] = useState(location.pathname);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isPriceListPage = location.pathname === "/price-list";
-
   useEffect(() => {
     setActiveTab(location.pathname);
   }, [location.pathname]);
 
   const handleNavigation = (path) => {
+    if (path === "/price-list" || path === "/#pricelist") {
+      if (location.pathname === "/") {
+        const el = document.getElementById("pricelist");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        } else {
+          window.scrollTo({ top: 500, behavior: "smooth" });
+        }
+      } else {
+        navigate("/");
+        setTimeout(() => {
+          document.getElementById("pricelist")?.scrollIntoView({ behavior: "smooth" });
+        }, 150);
+      }
+      setActiveTab(path);
+      setMobileOpen(false);
+      return;
+    }
     navigate(path);
     window.scrollTo({ top: 0, behavior: "smooth" });
     setActiveTab(path);
@@ -52,8 +68,7 @@ export default function Navbar() {
   return (
     <>
       {/* Desktop Navbar */}
-      {!isPriceListPage && (
-        <nav className="fixed top-4 left-4 right-4 z-50 max-w-7xl mx-auto">
+      <nav className="fixed top-4 left-4 right-4 z-50 max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -91,7 +106,7 @@ export default function Navbar() {
 
               {/* Desktop Order Button */}
               <button
-                onClick={() => handleNavigation("/price-list")}
+                onClick={() => handleNavigation("/#pricelist")}
                 className="lg:block px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-black font-semibold rounded-2xl hover:scale-105 transition-transform"
               >
                 Order
@@ -99,10 +114,9 @@ export default function Navbar() {
             </div>
           </motion.div>
         </nav>
-      )}
 
       {/* Mobile FAB Navigation */}
-      <div className={isPriceListPage ? "" : "lg:hidden"}>
+      <div className="lg:hidden">
         <AnimatePresence>
           {mobileOpen &&
             reversed.map((item, ri) => {

@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from "./Home/Home";
 import Login from './Admin/Login/Login';
 import Inventory from './Admin/Inventory/Inventory';
@@ -14,7 +14,6 @@ import Banner from './Admin/Banner/Banner';
 import Safety from './Home/Safety';
 import About from './Home/About';
 import Contact from './Home/Contact';
-import Pricelist from './Home/Pricelist';
 import Promocode from './Admin/Promo/Promocode'
 import SalesAnalysis from './Admin/SalesAnalysis';
 import Status from './Home/Status';
@@ -28,7 +27,7 @@ const AllRoutes = () => {
       <Route path="/safety-tips" element={<Safety />} />
       <Route path="/about-us" element={<About />} />
       <Route path="/contact-us" element={<Contact />} />
-      <Route path="/price-list" element={<Pricelist />} />
+      <Route path="/price-list" element={<Navigate to="/" replace />} />
       <Route path="/status" element={<Status />} />
       
       <Route element={<ProtectedRoute />}>
