@@ -3,7 +3,7 @@ import Modal from "react-modal"
 import Sidebar from "../Sidebar/Sidebar"
 import "../../App.css"
 import { API_BASE_URL } from "../../../Config"
-import { FaEye, FaEdit, FaTrash, FaSearch, FaDownload } from "react-icons/fa"
+import { FaEye, FaEdit, FaTrash, FaSearch, FaDownload, FaUpload, FaSpinner, FaCheckCircle, FaExclamationTriangle, FaTimes, FaFileArchive } from "react-icons/fa"
 import Logout from "../Logout"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -31,9 +31,9 @@ const PaginBtn = ({ label, onClick, disabled, active }) => (
     onClick={onClick}
     disabled={disabled}
     className={`px-4 py-2 rounded-lg border text-sm font-bold transition-all duration-150
-      ${active    ? "bg-indigo-600 border-indigo-600 text-white"
-      : disabled  ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
-                  : "bg-white border-slate-200 text-slate-800 hover:border-indigo-400 hover:text-indigo-600"}`}
+      ${active ? "bg-indigo-600 border-indigo-600 text-white"
+        : disabled ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
+          : "bg-white border-slate-200 text-slate-800 hover:border-indigo-400 hover:text-indigo-600"}`}
   >
     {label}
   </button>
@@ -67,6 +67,17 @@ export default function List() {
   const [currentPage, setCurrentPage] = useState(1)
   const [brands, setBrands] = useState([])
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false)
+  const [isDownloadingImages, setIsDownloadingImages] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 })
+  const [bulkUploadModalIsOpen, setBulkUploadModalIsOpen] = useState(false)
+  const [bulkFiles, setBulkFiles] = useState([])
+  const [bulkUnmatched, setBulkUnmatched] = useState([])
+  const [bulkMatchedCount, setBulkMatchedCount] = useState(0)
+  const [bulkProcessingFiles, setBulkProcessingFiles] = useState(false)
+  const [bulkUploading, setBulkUploading] = useState(false)
+  const [bulkUploadProgress, setBulkUploadProgress] = useState({ current: 0, total: 0, percent: 0 })
+  const [bulkUploadResult, setBulkUploadResult] = useState(null)
+  const [replaceExistingImages, setReplaceExistingImages] = useState(true)
   const [formData, setFormData] = useState({
     productname: "", serial_number: "", price: "", discount: "", per: "", product_type: "",
     description: "", box_count: 1, brand: "", free: false, images: [], existingImages: [], imagesToDelete: [],
@@ -238,29 +249,286 @@ export default function List() {
   useEffect(() => { applyFilters(products, filterType, searchQuery) }, [filterType, searchQuery, products])
 
   const handleDownloadAllImages = async () => {
-    if (products.length === 0) { setError("No products to download images from."); return }
+    if (products.length === 0) {
+      setError("No products to download images from.")
+      return
+    }
+
+    // Collect all valid image URLs across all products (both on and off status)
+    const queue = []
+    products.forEach((product) => {
+      const images = Array.isArray(product.images)
+        ? product.images
+        : (product.image ? (typeof product.image === "string" ? JSON.parse(product.image) : product.image) : [])
+
+      const cleanName = (product.productname || "Unknown")
+        .trim()
+        .replace(/[/\\?%*:|"<>]/g, "_")
+
+      const validImages = (images || []).filter((url) => typeof url === "string" && !url.includes("/video/"))
+
+      validImages.forEach((url, idx) => {
+        const ext = url.split(".").pop().split(/[?#]/)[0] || "jpg"
+        const fileName = validImages.length === 1
+          ? `${cleanName}.${ext}`
+          : `${cleanName}_${idx + 1}.${ext}`
+        queue.push({ url, fileName, product })
+      })
+    })
+
+    if (queue.length === 0) {
+      setError("No valid images found on products.")
+      return
+    }
+
+    setIsDownloadingImages(true)
+    setDownloadProgress({ current: 0, total: queue.length })
+    setError("")
+
     const zip = new JSZip()
     const folder = zip.folder("Product_Images")
-    const fetchPromises = products.map(async (product) => {
-      const images = product.images || []
-      const productName = (product.productname || "Unknown").replace(/[^a-zA-Z0-9]/g, "_")
-      for (let i = 0; i < images.length; i++) {
-        const url = images[i]
-        if (url.includes("/video/")) continue
-        try {
-          const res = await fetch(url)
-          const blob = await res.blob()
-          const ext = url.split('.').pop().split(/[\?\#]/)[0] || 'jpg'
-          folder.file(`${productName}_img${i + 1}.${ext}`, blob)
-        } catch (err) { console.warn(`Failed to download: ${url}`) }
+
+    const fetchBlob = async (url) => {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) throw new Error("Direct fetch failed")
+        return await res.blob()
+      } catch {
+        // Fallback to server proxy to bypass CORS issues on Cloudinary URLs
+        const proxyUrl = `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(url)}`
+        const proxyRes = await fetch(proxyUrl)
+        if (!proxyRes.ok) throw new Error("Proxy fetch failed")
+        return await proxyRes.blob()
       }
-    })
+    }
+
+    const CONCURRENCY = 6
+    let currentIndex = 0
+    let completedCount = 0
+
+    const worker = async () => {
+      while (currentIndex < queue.length) {
+        const itemIndex = currentIndex++
+        const item = queue[itemIndex]
+        try {
+          const blob = await fetchBlob(item.url)
+          folder.file(item.fileName, blob)
+        } catch (err) {
+          console.warn(`Failed to download ${item.fileName} from ${item.url}:`, err.message)
+        } finally {
+          completedCount++
+          setDownloadProgress({ current: completedCount, total: queue.length })
+        }
+      }
+    }
+
     try {
-      setError("")
-      await Promise.all(fetchPromises)
-      const content = await zip.generateAsync({ type: "blob" })
-      saveAs(content, "all_product_images.zip")
-    } catch (err) { setError("Failed to create ZIP file.") }
+      const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, () => worker())
+      await Promise.all(workers)
+
+      const zipBlob = await zip.generateAsync({ type: "blob" })
+      saveAs(zipBlob, "all_product_images.zip")
+    } catch (err) {
+      setError("Failed to create ZIP file: " + err.message)
+    } finally {
+      setIsDownloadingImages(false)
+      setDownloadProgress({ current: 0, total: 0 })
+    }
+  }
+
+  const findProductForImage = (filename, list) => {
+    if (!filename || !list || !list.length) return null
+    const norm = (s) => (s || "").toLowerCase().replace(/[/\\_\-\s]+/g, " ").trim()
+    const alpha = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+
+    const nameWithoutExt = filename.replace(/\.[^/.]+$/, "").trim()
+    const baseName = nameWithoutExt.replace(/(_img\d+|_image\d+|_\d+|\s*\(\d+\))$/i, "").trim()
+    const targetNorm = norm(baseName)
+    const targetAlpha = alpha(baseName)
+
+    // 1. Exact normalized name
+    let match = list.find((p) => norm(p.productname) === targetNorm)
+    if (match) return match
+
+    // 2. Alphanumeric name match
+    match = list.find((p) => alpha(p.productname) === targetAlpha)
+    if (match) return match
+
+    // 3. Serial number exact
+    match = list.find((p) => p.serial_number && norm(p.serial_number) === targetNorm)
+    if (match) return match
+
+    // 4. Combined serial + name
+    match = list.find(
+      (p) =>
+        targetNorm === norm(`${p.serial_number} ${p.productname}`) ||
+        targetNorm === norm(`${p.serial_number}_${p.productname}`) ||
+        targetAlpha === alpha(`${p.serial_number}${p.productname}`)
+    )
+    if (match) return match
+
+    // 5. Starts with serial
+    match = list.find((p) => {
+      if (!p.serial_number) return false
+      const sNorm = norm(p.serial_number)
+      if (targetNorm.startsWith(sNorm)) {
+        const rest = targetNorm.slice(sNorm.length).trim()
+        return norm(p.productname) === rest || alpha(p.productname) === alpha(rest)
+      }
+      return false
+    })
+    if (match) return match
+
+    return null
+  }
+
+  const processRawFiles = async (rawFiles) => {
+    setBulkProcessingFiles(true)
+    setBulkUploadResult(null)
+    const extractedFiles = []
+
+    for (const file of rawFiles) {
+      if (file.name.toLowerCase().endsWith(".zip")) {
+        try {
+          const zip = await JSZip.loadAsync(file)
+          const entries = Object.keys(zip.files)
+          for (const entryName of entries) {
+            const entry = zip.files[entryName]
+            if (entry.dir) continue
+            if (!/\.(jpe?g|png|gif|webp)$/i.test(entryName)) continue
+            const blob = await entry.async("blob")
+            const fileName = entryName.split("/").pop().split("\\").pop()
+            if (!fileName) continue
+            const ext = fileName.split(".").pop().toLowerCase()
+            const mimeType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg"
+            const extractedFile = new File([blob], fileName, { type: mimeType })
+            extractedFiles.push(extractedFile)
+          }
+        } catch (err) {
+          setError("Failed to read ZIP file: " + err.message)
+        }
+      } else if (/\.(jpe?g|png|gif|webp)$/i.test(file.name)) {
+        extractedFiles.push(file)
+      }
+    }
+
+    const matched = []
+    const unmatched = []
+    const matchedProductIds = new Set()
+
+    for (const file of extractedFiles) {
+      const match = findProductForImage(file.name, products)
+      if (match) {
+        matched.push({ file, product: match, fileName: file.name })
+        matchedProductIds.add(`${match.product_type}-${match.id}`)
+      } else {
+        unmatched.push(file.name)
+      }
+    }
+
+    setBulkFiles(matched)
+    setBulkUnmatched(unmatched)
+    setBulkMatchedCount(matchedProductIds.size)
+    setBulkProcessingFiles(false)
+  }
+
+  const handleBulkFileInput = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      processRawFiles(files)
+    }
+  }
+
+  const handleStartBulkUpload = async () => {
+    if (bulkFiles.length === 0) return
+    setBulkUploading(true)
+    setError("")
+    setBulkUploadResult(null)
+
+    const CHUNK_SIZE = 20
+    const chunks = chunkArray(bulkFiles, CHUNK_SIZE)
+    let totalUploaded = 0
+    let totalProductsUpdated = 0
+    let allUnmatched = [...bulkUnmatched]
+
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]
+        const formData = new FormData()
+        formData.append("replaceExisting", replaceExistingImages ? "true" : "false")
+        chunk.forEach((item) => {
+          formData.append("images", item.file, item.fileName)
+        })
+
+        const res = await fetch(`${API_BASE_URL}/api/products/bulk-upload-images`, {
+          method: "POST",
+          body: formData,
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.message || data.error || `Batch ${i + 1} upload failed`)
+        }
+
+        totalUploaded += chunk.length
+        totalProductsUpdated += (data.updatedCount || 0)
+        if (data.unmatchedFiles && data.unmatchedFiles.length) {
+          allUnmatched = [...new Set([...allUnmatched, ...data.unmatchedFiles])]
+        }
+
+        setBulkUploadProgress({
+          current: totalUploaded,
+          total: bulkFiles.length,
+          percent: Math.round((totalUploaded / bulkFiles.length) * 100),
+        })
+      }
+
+      setBulkUploadResult({
+        success: true,
+        updatedProductsCount: totalProductsUpdated || bulkMatchedCount,
+        totalFilesUploaded: totalUploaded,
+        unmatchedCount: allUnmatched.length,
+      })
+      fetchProducts()
+    } catch (err) {
+      setError("Bulk upload error: " + err.message)
+      setBulkUploadResult({
+        success: false,
+        error: err.message,
+      })
+    } finally {
+      setBulkUploading(false)
+    }
+  }
+
+  const resetBulkUploadModal = () => {
+    setBulkUploadModalIsOpen(false)
+    setBulkFiles([])
+    setBulkUnmatched([])
+    setBulkMatchedCount(0)
+    setBulkUploadResult(null)
+    setBulkUploading(false)
+    setBulkUploadProgress({ current: 0, total: 0, percent: 0 })
+    setMigrationStatus("")
+  }
+
+  const handleMigrateLegacyCloudName = async () => {
+    setMigratingCloudName(true)
+    setMigrationStatus("")
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/products/replace-cloud-name`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldCloudName: "bqbgj4yl" }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || "Migration failed")
+      setMigrationStatus(data.message)
+      fetchProducts()
+    } catch (err) {
+      setMigrationStatus("Error: " + err.message)
+    } finally {
+      setMigratingCloudName(false)
+    }
   }
 
   const handleImageChange = (event) => {
@@ -701,8 +969,29 @@ export default function List() {
                 <button onClick={downloadPDF} className="h-10 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-slate-600 to-slate-500 shadow-lg shadow-slate-200 hover:from-slate-700 hover:to-slate-600 transition-all duration-200 flex items-center gap-1.5">
                   <FaDownload className="text-xs" /> Pricelist
                 </button>
-                <button onClick={handleDownloadAllImages} className="h-10 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-emerald-500 to-emerald-400 shadow-lg shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-500 transition-all duration-200 flex items-center gap-1.5">
-                  <FaDownload className="text-xs" /> Images
+                <button
+                  onClick={handleDownloadAllImages}
+                  disabled={isDownloadingImages}
+                  className="h-10 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-emerald-500 to-emerald-400 shadow-lg shadow-emerald-200 hover:from-emerald-600 hover:to-emerald-500 disabled:opacity-60 transition-all duration-200 flex items-center gap-1.5"
+                  title="Download all product images into a ZIP file"
+                >
+                  {isDownloadingImages ? (
+                    <>
+                      <FaSpinner className="animate-spin text-xs" />
+                      {downloadProgress.total > 0 ? `Downloading (${downloadProgress.current}/${downloadProgress.total})` : "Downloading..."}
+                    </>
+                  ) : (
+                    <>
+                      <FaDownload className="text-xs" /> Download Images
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setBulkUploadModalIsOpen(true)}
+                  className="h-10 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-amber-500 to-amber-400 shadow-lg shadow-amber-200 hover:from-amber-600 hover:to-amber-500 transition-all duration-200 flex items-center gap-1.5"
+                  title="Bulk upload images matching by product name"
+                >
+                  <FaUpload className="text-xs" /> Bulk Upload Images
                 </button>
               </div>
             </div>
@@ -871,6 +1160,283 @@ export default function List() {
           <div className="flex gap-2.5 justify-center">
             <button onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors">Keep It</button>
             <button onClick={() => handleDelete(productToDelete)} className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-red-500 to-red-400 shadow-lg shadow-red-200 hover:from-red-600 hover:to-red-500 transition-all duration-200">Yes, Delete</button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={bulkUploadModalIsOpen}
+        onRequestClose={bulkUploading ? undefined : resetBulkUploadModal}
+        className="fixed inset-0 flex items-center justify-center p-4 z-50"
+        overlayClassName="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"
+      >
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl max-h-[90vh] flex flex-col">
+          <div className="flex justify-between items-start mb-4 pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                <FaUpload className="text-indigo-600 text-lg" /> Bulk Upload Product Images
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Upload a ZIP file or multiple image files. Files will automatically be matched and assigned to products by name or code.
+              </p>
+            </div>
+            {!bulkUploading && (
+              <button
+                onClick={resetBulkUploadModal}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Close"
+              >
+                <FaTimes />
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-y-auto flex-1 pr-1 space-y-4">
+            {/* Upload / Dropzone Area */}
+            {bulkFiles.length === 0 && !bulkProcessingFiles && (
+              <div className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 rounded-2xl p-8 text-center transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  accept=".zip,image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleBulkFileInput}
+                  className="hidden"
+                  id="bulk-image-file-input"
+                />
+                <label
+                  htmlFor="bulk-image-file-input"
+                  className="cursor-pointer flex flex-col items-center justify-center"
+                >
+                  <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+                    <FaUpload className="text-2xl" />
+                  </div>
+                  <span className="font-bold text-slate-800 text-base mb-1">
+                    Select Images or ZIP Archive
+                  </span>
+                  <span className="text-xs text-slate-500 max-w-md">
+                    Choose multiple image files (JPG, PNG, WebP) or upload the downloaded <strong>all_product_images.zip</strong>.
+                    Names like <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-mono">28 CHORSA.jpg</code> or <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-mono">1013 28 CHORSA.jpg</code> will be matched automatically!
+                  </span>
+                  <span className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all">
+                    Browse Files
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* Legacy Cloud Name Migration Quick Action */}
+            {bulkFiles.length === 0 && !bulkProcessingFiles && (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    🔄 Direct URL Cloud Name Replacement
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    If your new account already has these assets, click here to replace disabled <code className="text-slate-600 font-mono">bqbgj4yl</code> with active <code className="text-indigo-600 font-mono">l6fbxbak</code> directly in the database.
+                  </div>
+                  {migrationStatus && (
+                    <div className="text-xs font-bold text-indigo-600 mt-1">
+                      {migrationStatus}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleMigrateLegacyCloudName}
+                  disabled={migratingCloudName}
+                  className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-colors whitespace-nowrap disabled:opacity-50 shrink-0"
+                >
+                  {migratingCloudName ? "Updating URLs..." : "Replace bqbgj4yl with l6fbxbak"}
+                </button>
+              </div>
+            )}
+
+            {/* Processing state */}
+            {bulkProcessingFiles && (
+              <div className="py-12 text-center">
+                <FaSpinner className="animate-spin text-3xl text-indigo-600 mx-auto mb-3" />
+                <p className="text-sm font-bold text-slate-700">Scanning & matching files to products...</p>
+                <p className="text-xs text-slate-400 mt-1">Extracting archive if ZIP was provided</p>
+              </div>
+            )}
+
+            {/* Results / Matching Summary */}
+            {(bulkFiles.length > 0 || bulkUnmatched.length > 0) && !bulkProcessingFiles && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Scanned</div>
+                    <div className="text-xl font-extrabold text-slate-800 mt-0.5">
+                      {bulkFiles.length + bulkUnmatched.length}
+                    </div>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-center">
+                    <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Matched Images</div>
+                    <div className="text-xl font-extrabold text-emerald-700 mt-0.5">
+                      {bulkFiles.length} <span className="text-xs font-normal text-emerald-600">({bulkMatchedCount} products)</span>
+                    </div>
+                  </div>
+                  <div className={`rounded-2xl p-3 text-center border ${bulkUnmatched.length > 0 ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-slate-50 border-slate-200 text-slate-500"}`}>
+                    <div className="text-xs font-bold uppercase tracking-wider">Unmatched</div>
+                    <div className="text-xl font-extrabold mt-0.5">
+                      {bulkUnmatched.length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Replace toggle */}
+                <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div>
+                    <div className="text-sm font-bold text-slate-800">Replace Existing Images</div>
+                    <div className="text-xs text-slate-500">
+                      Overwrite old image URLs with the newly uploaded Cloudinary images (recommended for credential migration)
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={replaceExistingImages}
+                      onChange={(e) => setReplaceExistingImages(e.target.checked)}
+                      disabled={bulkUploading}
+                    />
+                    <div className={`w-11 h-6 rounded-full transition-colors ${replaceExistingImages ? "bg-indigo-600" : "bg-slate-300"}`}>
+                      <div className={`w-5 h-5 bg-white rounded-full transition-transform mt-0.5 ${replaceExistingImages ? "translate-x-5.5 ml-0.5" : "translate-x-0.5"}`} />
+                    </div>
+                  </label>
+                </div>
+
+                {/* Unmatched files list */}
+                {bulkUnmatched.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5">
+                    <div className="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2">
+                      <FaExclamationTriangle className="text-amber-600" />
+                      {bulkUnmatched.length} files could not be matched to any product name or code:
+                    </div>
+                    <div className="max-h-24 overflow-y-auto flex flex-wrap gap-1.5">
+                      {bulkUnmatched.map((fn, i) => (
+                        <span key={i} className="text-[11px] bg-white border border-amber-300 text-amber-900 px-2 py-0.5 rounded-md font-mono">
+                          {fn}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview of matches */}
+                {bulkFiles.length > 0 && (
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Matched Products Preview ({bulkFiles.length})
+                      </span>
+                      {!bulkUploading && (
+                        <label
+                          htmlFor="bulk-image-file-input-change"
+                          className="text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
+                        >
+                          Change files
+                          <input
+                            type="file"
+                            multiple
+                            accept=".zip,image/jpeg,image/png,image/gif,image/webp"
+                            onChange={handleBulkFileInput}
+                            className="hidden"
+                            id="bulk-image-file-input-change"
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div className="border border-slate-200 rounded-2xl max-h-48 overflow-y-auto divide-y divide-slate-100 text-xs">
+                      {bulkFiles.slice(0, 100).map((item, idx) => (
+                        <div key={idx} className="p-2.5 flex items-center justify-between hover:bg-slate-50">
+                          <div className="truncate pr-2">
+                            <span className="font-mono text-slate-500 font-medium">{item.fileName}</span>
+                          </div>
+                          <div className="text-right shrink-0 flex items-center gap-2">
+                            <span className="font-bold text-slate-800">
+                              [{item.product.serial_number}] {item.product.productname}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                              Matched
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {bulkFiles.length > 100 && (
+                        <div className="p-2 text-center text-xs text-slate-400 font-medium">
+                          + {bulkFiles.length - 100} more matched items...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Progress */}
+                {bulkUploading && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold text-indigo-700 flex items-center gap-2">
+                        <FaSpinner className="animate-spin text-sm" /> Uploading to Cloudinary & updating products...
+                      </span>
+                      <span className="text-xs font-extrabold text-indigo-700">
+                        {bulkUploadProgress.percent}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-indigo-200 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${bulkUploadProgress.percent}%` }}
+                      />
+                    </div>
+                    <div className="text-[11px] text-indigo-500 mt-2 text-right">
+                      {bulkUploadProgress.current} of {bulkUploadProgress.total} files processed
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Result */}
+                {bulkUploadResult && (
+                  <div className={`p-4 rounded-2xl border ${bulkUploadResult.success ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                      {bulkUploadResult.success ? <FaCheckCircle className="text-emerald-600 text-base" /> : <FaExclamationTriangle className="text-red-600 text-base" />}
+                      {bulkUploadResult.success ? "Bulk Upload Complete!" : "Bulk Upload Error"}
+                    </div>
+                    <p className="text-xs mt-1">
+                      {bulkUploadResult.success
+                        ? `Successfully uploaded ${bulkUploadResult.totalFilesUploaded} images and updated ${bulkUploadResult.updatedProductsCount} products with new Cloudinary credentials!`
+                        : bulkUploadResult.error || "Failed to complete bulk upload."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2.5 pt-4 mt-4 border-t border-slate-100">
+            <button
+              onClick={resetBulkUploadModal}
+              disabled={bulkUploading}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              {bulkUploadResult?.success ? "Done" : "Cancel"}
+            </button>
+            {bulkFiles.length > 0 && !bulkUploadResult?.success && (
+              <button
+                onClick={handleStartBulkUpload}
+                disabled={bulkUploading || bulkFiles.length === 0}
+                className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-indigo-600 to-indigo-500 shadow-lg shadow-indigo-200 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {bulkUploading ? (
+                  <>
+                    <FaSpinner className="animate-spin text-xs" /> Uploading ({bulkUploadProgress.percent}%)
+                  </>
+                ) : (
+                  <>
+                    <FaUpload className="text-xs" /> Upload & Update {bulkMatchedCount} Products
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </Modal>

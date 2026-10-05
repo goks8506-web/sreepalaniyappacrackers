@@ -28,6 +28,7 @@ import ToasterNotification from "../Component/ToasterNotification";
 import SuccessAnimation from "../Component/SuccessAnimation";
 import ModernCarousel from "../Component/ModernCarousel";
 import LoadingSpinner from "../Component/LoadingSpinner";
+import IntroLoader from "./introLoader";
 import jsPDF from "jspdf";
 import "../App.css";
 import need from "../spc.jpg";
@@ -758,8 +759,8 @@ const LuckySpinModal = memo(({ isOpen, onClose, freeProducts, onAddFreeProduct, 
               {alreadyHasFree
                 ? "You already claimed your free gift!"
                 : segments.length > 0
-                ? `${segments.length} surprise allocations available — launch spin.`
-                : "No promotional units loaded."}
+                  ? `${segments.length} surprise allocations available — launch spin.`
+                  : "No promotional units loaded."}
             </p>
           </div>
 
@@ -901,6 +902,7 @@ export default function Home() {
   const [minOrderMessage, setMinOrderMessage] = useState("");
   const [showToaster, setShowToaster] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showIntro, setShowIntro] = useState(true);
   const [isBookingLoading, setIsBookingLoading] = useState(false);
   const [customerDetails, setCustomerDetails] = useState({
     customer_name: "",
@@ -1616,19 +1618,19 @@ export default function Home() {
     });
     const freeProductPayload = freeCartItem
       ? [
-          {
-            id: freeCartItem.id,
-            product_type: freeCartItem.product_type,
-            quantity: 1,
-            per: freeCartItem.per,
-            price: 0,
-            discount: 0,
-            serial_number: freeCartItem.serial_number,
-            productname: freeCartItem.productname,
-            status: "free",
-            is_free: true,
-          },
-        ]
+        {
+          id: freeCartItem.id,
+          product_type: freeCartItem.product_type,
+          quantity: 1,
+          per: freeCartItem.per,
+          price: 0,
+          discount: 0,
+          serial_number: freeCartItem.serial_number,
+          productname: freeCartItem.productname,
+          status: "free",
+          is_free: true,
+        },
+      ]
       : [];
     const allProducts = [...selectedProducts, ...freeProductPayload];
     if (!allProducts.length) {
@@ -1680,10 +1682,10 @@ export default function Home() {
           promo_discount: Number(totals.promo_discount || "0"),
           free_item: freeCartItem
             ? {
-                serial_number: freeCartItem.serial_number,
-                productname: freeCartItem.productname,
-                price: 0,
-              }
+              serial_number: freeCartItem.serial_number,
+              productname: freeCartItem.productname,
+              price: 0,
+            }
             : null,
           customer_type: customerDetails.customer_type,
           customer_name: customerDetails.customer_name,
@@ -1766,14 +1768,14 @@ export default function Home() {
     const items = Array.isArray(media)
       ? media
       : typeof media === "string"
-      ? (() => {
+        ? (() => {
           try {
             return JSON.parse(media);
           } catch {
             return [media];
           }
         })()
-      : [];
+        : [];
     setSelectedImages(items);
     setCurrentImageIndex(0);
     setShowImageModal(true);
@@ -1856,12 +1858,12 @@ export default function Home() {
         { label: "Product Discount", val: `−₹${totals.product_discount}`, color: "#ef4444" },
         ...(appliedPromo
           ? [
-              {
-                label: `Promo (${appliedPromo.code})`,
-                val: `−₹${totals.promo_discount}`,
-                color: "#ef4444",
-              },
-            ]
+            {
+              label: `Promo (${appliedPromo.code})`,
+              val: `−₹${totals.promo_discount}`,
+              color: "#ef4444",
+            },
+          ]
           : []),
         { label: "You Save", val: `−₹${totals.save}`, color: "#10b981" },
         { label: "Processing Fee (1%)", val: `₹${totals.processing_fee}`, color: C.slate },
@@ -1925,11 +1927,15 @@ export default function Home() {
     </div>
   );
 
-  if (isLoading) return <LoadingSpinner />;
+  // Only show fallback loading spinner if intro has already finished and data is still fetching
+  if (!showIntro && isLoading) return <LoadingSpinner />;
 
   return (
     <div className="min-h-screen overflow-x-hidden cosmic-mesh" style={{ background: C.void, color: C.ink }}>
       <style>{GLOBAL_STYLES_CSS}</style>
+
+      {/* ── Initial Branded Intro Loader ── */}
+      {showIntro && <IntroLoader onComplete={() => setShowIntro(false)} />}
 
       {/* 1st - Fixed Floating Min Purchase Pipeline if cart active */}
       {cartItemCount > 0 && (
@@ -2245,8 +2251,8 @@ export default function Home() {
                       const priceAfterDiscount = formatPrice(origPrice - discountAmt);
                       const imageSrc = Array.isArray(product.images)
                         ? product.images.filter(
-                            (item) => !item.includes("/video/") && !item.toLowerCase().endsWith(".gif")
-                          )[0] || need
+                          (item) => !item.includes("/video/") && !item.toLowerCase().endsWith(".gif")
+                        )[0] || need
                         : need;
                       return (
                         <motion.div
@@ -2387,8 +2393,8 @@ export default function Home() {
                             src={
                               Array.isArray(freeCartItem.images) && freeCartItem.images.length > 0
                                 ? freeCartItem.images.filter(
-                                    (i) => !i.includes("/video/") && !i.toLowerCase().endsWith(".gif")
-                                  )[0] || need
+                                  (i) => !i.includes("/video/") && !i.toLowerCase().endsWith(".gif")
+                                )[0] || need
                                 : need
                             }
                             alt={freeCartItem.productname}
@@ -3717,8 +3723,8 @@ export default function Home() {
                           link === "Home"
                             ? "/"
                             : isPricelist
-                            ? "/#pricelist"
-                            : `/${link.toLowerCase().replace(/ /g, "-")}`
+                              ? "/#pricelist"
+                              : `/${link.toLowerCase().replace(/ /g, "-")}`
                         }
                         onClick={(e) => {
                           if (isPricelist) {

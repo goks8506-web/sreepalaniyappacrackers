@@ -1,23 +1,23 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 
-const rand    = (a, b) => Math.random() * (b - a) + a
+const rand = (a, b) => Math.random() * (b - a) + a
 const randInt = (a, b) => Math.floor(rand(a, b))
 
 const BURST_PALETTES = [
-  ["#ff4500","#ff6a00","#ffb347","#ffe066","#fff"],
-  ["#ff0080","#ff69b4","#ffb6c1","#fff"],
-  ["#00cfff","#7efff5","#b2ffef","#fff"],
-  ["#a259ff","#c084fc","#e9d5ff","#fff"],
-  ["#39ff14","#7fff00","#adff2f","#fff"],
-  ["#ffd700","#ffec8b","#fff8dc","#fff"],
+  ["#ff4500", "#ff6a00", "#ffb347", "#ffe066", "#fff"],
+  ["#ff0080", "#ff69b4", "#ffb6c1", "#fff"],
+  ["#00cfff", "#7efff5", "#b2ffef", "#fff"],
+  ["#a259ff", "#c084fc", "#e9d5ff", "#fff"],
+  ["#39ff14", "#7fff00", "#adff2f", "#fff"],
+  ["#ffd700", "#ffec8b", "#fff8dc", "#fff"],
 ]
 
 // ── Fireworks Engine ────────────────────────────────────────
 function useFireworksEngine(canvasRef, phase) {
-  const animRef   = useRef(null)
+  const animRef = useRef(null)
   const particles = useRef([])
-  const rockets   = useRef([])
-  const frame     = useRef(0)
+  const rockets = useRef([])
+  const frame = useRef(0)
   const W = useRef(0), H = useRef(0)
 
   const burst = useCallback((x, y, palette) => {
@@ -70,7 +70,7 @@ function useFireworksEngine(canvasRef, phase) {
     const ctx = canvas.getContext("2d")
 
     const resize = () => {
-      canvas.width  = window.innerWidth
+      canvas.width = window.innerWidth
       canvas.height = window.innerHeight
       W.current = canvas.width
       H.current = canvas.height
@@ -82,18 +82,18 @@ function useFireworksEngine(canvasRef, phase) {
 
     if (phase === "burst") {
       const pts = [
-        [.22,.13],[.5,.08],[.78,.13],[.14,.2],[.86,.2],
-        [.38,.1],[.62,.1],[.3,.17],[.7,.17],[.5,.05],
-        [.1,.22],[.9,.22],
+        [.22, .13], [.5, .08], [.78, .13], [.14, .2], [.86, .2],
+        [.38, .1], [.62, .1], [.3, .17], [.7, .17], [.5, .05],
+        [.1, .22], [.9, .22],
       ]
       pts.forEach(([tx, ty], i) =>
         ids.push(setTimeout(() =>
           launchRocket(W.current * tx, H.current * ty, BURST_PALETTES[i % BURST_PALETTES.length]),
-        i * 160))
+          i * 160))
       )
       ids.push(setInterval(() =>
-        launchRocket(W.current * rand(.1,.9), H.current * rand(.04,.28), BURST_PALETTES[randInt(0, BURST_PALETTES.length)]),
-      360))
+        launchRocket(W.current * rand(.1, .9), H.current * rand(.04, .28), BURST_PALETTES[randInt(0, BURST_PALETTES.length)]),
+        360))
     }
 
     const draw = () => {
@@ -107,7 +107,7 @@ function useFireworksEngine(canvasRef, phase) {
         r.x += r.vx; r.y += r.vy; r.life--
 
         r.trail.forEach((pt, i) => {
-          const a  = (i / r.trail.length) * 0.75
+          const a = (i / r.trail.length) * 0.75
           const sz = (i / r.trail.length) * 4
           ctx.beginPath(); ctx.arc(pt.x, pt.y, sz, 0, Math.PI * 2)
           ctx.fillStyle = `rgba(255,180,60,${a})`; ctx.fill()
@@ -173,8 +173,8 @@ function Stars() {
         <div key={i} style={{
           position: "absolute",
           left: `${(i * 137.5) % 100}%`,
-          top:  `${(i * 79.3) % 100}%`,
-          width:  i % 9 === 0 ? 2 : 1,
+          top: `${(i * 79.3) % 100}%`,
+          width: i % 9 === 0 ? 2 : 1,
           height: i % 9 === 0 ? 2 : 1,
           borderRadius: "50%",
           background: "#fff",
@@ -196,7 +196,7 @@ function Skyline({ lit }) {
     >
       <defs>
         <linearGradient id="skyGlow" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#ff4500" stopOpacity={lit ? "0.18" : "0.04"} />
+          <stop offset="0%" stopColor="#ff4500" stopOpacity={lit ? "0.18" : "0.04"} />
           <stop offset="100%" stopColor="#ff4500" stopOpacity="0" />
         </linearGradient>
       </defs>
@@ -204,10 +204,10 @@ function Skyline({ lit }) {
 
       {/* Far layer — thin silhouette */}
       {[
-        [0,200,90,120],[100,185,60,135],[170,175,80,145],[265,190,55,130],
-        [332,168,95,152],[440,180,65,140],[518,162,100,158],[635,178,60,142],
-        [710,165,82,155],[806,182,65,138],[885,170,88,150],[988,188,58,132],
-        [1060,162,78,158],[1150,178,68,142],[1232,192,80,128],[1330,200,85,120],
+        [0, 200, 90, 120], [100, 185, 60, 135], [170, 175, 80, 145], [265, 190, 55, 130],
+        [332, 168, 95, 152], [440, 180, 65, 140], [518, 162, 100, 158], [635, 178, 60, 142],
+        [710, 165, 82, 155], [806, 182, 65, 138], [885, 170, 88, 150], [988, 188, 58, 132],
+        [1060, 162, 78, 158], [1150, 178, 68, 142], [1232, 192, 80, 128], [1330, 200, 85, 120],
       ].map(([x, y, w, h], i) => (
         <g key={`f${i}`}>
           <rect x={x} y={y} width={w} height={h} fill="#060606" />
@@ -227,17 +227,17 @@ function Skyline({ lit }) {
 
       {/* Near layer — taller, darker */}
       {[
-        [0,238,95,82],[105,222,110,98],[230,230,75,90],[318,210,130,110],
-        [462,226,98,94],[574,205,140,115],[730,228,90,92],[835,214,118,106],
-        [968,226,100,94],[1082,208,110,112],[1208,222,85,98],[1310,240,130,80],
+        [0, 238, 95, 82], [105, 222, 110, 98], [230, 230, 75, 90], [318, 210, 130, 110],
+        [462, 226, 98, 94], [574, 205, 140, 115], [730, 228, 90, 92], [835, 214, 118, 106],
+        [968, 226, 100, 94], [1082, 208, 110, 112], [1208, 222, 85, 98], [1310, 240, 130, 80],
       ].map(([x, y, w, h], i) => (
         <g key={`n${i}`}>
           <rect x={x} y={y} width={w} height={h} fill="#030303" />
           {i % 4 === 0 && (
             <>
-              <line x1={x+w/2} y1={y} x2={x+w/2} y2={y-16} stroke="#1a1a1a" strokeWidth="1.5"/>
-              <circle cx={x+w/2} cy={y-18} r="2" fill={lit ? "#ff3300" : "#111"}
-                style={lit ? {animation:"antennaBlink 2s ease-in-out infinite"} : {}}/>
+              <line x1={x + w / 2} y1={y} x2={x + w / 2} y2={y - 16} stroke="#1a1a1a" strokeWidth="1.5" />
+              <circle cx={x + w / 2} cy={y - 18} r="2" fill={lit ? "#ff3300" : "#111"}
+                style={lit ? { animation: "antennaBlink 2s ease-in-out infinite" } : {}} />
             </>
           )}
           {Array.from({ length: Math.floor(h / 26) }, (_, r) =>
@@ -266,48 +266,48 @@ function Rocket({ lit }) {
     <svg viewBox="0 0 48 110" width="48" height="110" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="rb" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%"   stopColor="#991100" />
-          <stop offset="45%"  stopColor="#ff4400" />
+          <stop offset="0%" stopColor="#991100" />
+          <stop offset="45%" stopColor="#ff4400" />
           <stop offset="100%" stopColor="#661100" />
         </linearGradient>
         <linearGradient id="rf" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%"   stopColor="#882200" />
+          <stop offset="0%" stopColor="#882200" />
           <stop offset="100%" stopColor="#cc3300" />
         </linearGradient>
         <radialGradient id="rfl" cx="50%" cy="10%" r="80%">
-          <stop offset="0%"   stopColor="#fff"    stopOpacity="0.95"/>
-          <stop offset="30%"  stopColor="#ffee44" stopOpacity="0.85"/>
-          <stop offset="70%"  stopColor="#ff6600" stopOpacity="0.6"/>
-          <stop offset="100%" stopColor="#ff0000" stopOpacity="0"/>
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.95" />
+          <stop offset="30%" stopColor="#ffee44" stopOpacity="0.85" />
+          <stop offset="70%" stopColor="#ff6600" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#ff0000" stopOpacity="0" />
         </radialGradient>
-        <filter id="fb"><feGaussianBlur stdDeviation="1.8"/></filter>
+        <filter id="fb"><feGaussianBlur stdDeviation="1.8" /></filter>
       </defs>
 
       {/* Body */}
-      <path d="M24 4 Q34 22 34 56 L14 56 Q14 22 24 4Z" fill="url(#rb)"/>
+      <path d="M24 4 Q34 22 34 56 L14 56 Q14 22 24 4Z" fill="url(#rb)" />
       {/* Nose */}
-      <path d="M24 1 Q29 14 29 24 Q24 18 19 24 Q19 14 24 1Z" fill="#ff3300"/>
+      <path d="M24 1 Q29 14 29 24 Q24 18 19 24 Q19 14 24 1Z" fill="#ff3300" />
       {/* Porthole */}
-      <circle cx="24" cy="35" r="6" fill="#000c22" stroke="#6699ff" strokeWidth="1.2"/>
-      <circle cx="22.5" cy="33.5" r="1.8" fill="#fff" opacity="0.25"/>
+      <circle cx="24" cy="35" r="6" fill="#000c22" stroke="#6699ff" strokeWidth="1.2" />
+      <circle cx="22.5" cy="33.5" r="1.8" fill="#fff" opacity="0.25" />
       {/* Fins */}
-      <path d="M14 50 L4 68 L14 62Z"  fill="url(#rf)"/>
-      <path d="M34 50 L44 68 L34 62Z" fill="url(#rf)"/>
+      <path d="M14 50 L4 68 L14 62Z" fill="url(#rf)" />
+      <path d="M34 50 L44 68 L34 62Z" fill="url(#rf)" />
       {/* Boosters */}
-      <rect x="8"  y="48" width="6" height="16" rx="2.5" fill="#881100"/>
-      <rect x="34" y="48" width="6" height="16" rx="2.5" fill="#881100"/>
+      <rect x="8" y="48" width="6" height="16" rx="2.5" fill="#881100" />
+      <rect x="34" y="48" width="6" height="16" rx="2.5" fill="#881100" />
 
       {/* Flame */}
       {lit && (
         <>
           <ellipse cx="24" cy="68" rx={9} ry={20}
             fill="url(#rfl)" opacity="0.95"
-            style={{animation:"ff 0.09s ease-in-out infinite alternate"}}/>
+            style={{ animation: "ff 0.09s ease-in-out infinite alternate" }} />
           <ellipse cx="24" cy="68" rx="18" ry="28"
-            fill="#ff4400" opacity="0.12" filter="url(#fb)"/>
+            fill="#ff4400" opacity="0.12" filter="url(#fb)" />
           {/* Booster flames */}
-          <ellipse cx="11" cy="66" rx="3.5" ry="9" fill="#ffaa00" opacity="0.7"/>
-          <ellipse cx="37" cy="66" rx="3.5" ry="9" fill="#ffaa00" opacity="0.7"/>
+          <ellipse cx="11" cy="66" rx="3.5" ry="9" fill="#ffaa00" opacity="0.7" />
+          <ellipse cx="37" cy="66" rx="3.5" ry="9" fill="#ffaa00" opacity="0.7" />
         </>
       )}
     </svg>
@@ -347,14 +347,14 @@ export default function Launch({ onComplete }) {
   const canvasRef = useRef(null)
 
   // phases: idle → warmup → ignition → liftoff → burst → reveal → exit
-  const [phase,       setPhase]       = useState("idle")
-  const [lit,         setLit]         = useState(false)
-  const [rocketY,     setRocketY]     = useState("0px")
+  const [phase, setPhase] = useState("idle")
+  const [lit, setLit] = useState(false)
+  const [rocketY, setRocketY] = useState("0px")
   const [rocketTrans, setRocketTrans] = useState("none")
-  const [showRocket,  setShowRocket]  = useState(true)
+  const [showRocket, setShowRocket] = useState(true)
   const [showContent, setShowContent] = useState(false)
-  const [exiting,     setExiting]     = useState(false)
-  const [progress,    setProgress]    = useState(0)
+  const [exiting, setExiting] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   useFireworksEngine(canvasRef, phase === "burst" ? "burst" : "idle")
 
@@ -386,8 +386,8 @@ export default function Launch({ onComplete }) {
 
     // Progress
     const totalMs = 9800
-    const start   = Date.now()
-    const tick    = setInterval(() => {
+    const start = Date.now()
+    const tick = setInterval(() => {
       const pct = Math.min(((Date.now() - start) / totalMs) * 100, 100)
       setProgress(pct)
       if (pct >= 100) clearInterval(tick)
@@ -453,7 +453,7 @@ export default function Launch({ onComplete }) {
       <Stars />
 
       {/* Fireworks canvas */}
-      <canvas ref={canvasRef} style={{ position:"absolute", inset:0, zIndex:2, pointerEvents:"none" }} />
+      <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }} />
 
       {/* City skyline */}
       <Skyline lit={lit} />
@@ -461,20 +461,20 @@ export default function Launch({ onComplete }) {
       {/* ── Ignition ground glow ── */}
       {phase === "ignition" && (
         <div style={{
-          position:"absolute", bottom:60, left:"50%",
-          transform:"translateX(-50%)",
-          width:200, height:200, borderRadius:"50%",
-          background:"radial-gradient(circle, rgba(255,120,0,0.35) 0%, transparent 70%)",
-          zIndex:4, pointerEvents:"none",
-          animation:"ignFlash 0.35s ease-in-out 4",
-        }}/>
+          position: "absolute", bottom: 60, left: "50%",
+          transform: "translateX(-50%)",
+          width: 200, height: 200, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,120,0,0.35) 0%, transparent 70%)",
+          zIndex: 4, pointerEvents: "none",
+          animation: "ignFlash 0.35s ease-in-out 4",
+        }} />
       )}
 
       {/* ── Rocket ── */}
       {showRocket && (
         <div style={{
-          position:"absolute",
-          left:"50%",
+          position: "absolute",
+          left: "50%",
           bottom: 58,
           zIndex: 6,
           transform: `translateX(-50%) translateY(${rocketY})`,
@@ -486,39 +486,39 @@ export default function Launch({ onComplete }) {
           <Rocket lit={lit} />
 
           {/* Exhaust rings */}
-          {lit && phase !== "liftoff" && ["0s","0.28s","0.56s"].map((d, i) => (
+          {lit && phase !== "liftoff" && ["0s", "0.28s", "0.56s"].map((d, i) => (
             <div key={i} style={{
-              position:"absolute", bottom:-8, left:"50%",
-              transform:"translateX(-50%)",
+              position: "absolute", bottom: -8, left: "50%",
+              transform: "translateX(-50%)",
               width: 24 + i * 14, height: 10,
-              borderRadius:"50%",
-              background:`rgba(255,${90+i*35},0,${0.38-i*0.1})`,
-              filter:"blur(5px)",
-              animation:`exhaustRing .85s ${d} ease-out infinite`,
-            }}/>
+              borderRadius: "50%",
+              background: `rgba(255,${90 + i * 35},0,${0.38 - i * 0.1})`,
+              filter: "blur(5px)",
+              animation: `exhaustRing .85s ${d} ease-out infinite`,
+            }} />
           ))}
 
           {/* Embers */}
-          {lit && Array.from({length:10}, (_,i) => (
+          {lit && Array.from({ length: 10 }, (_, i) => (
             <div key={i} style={{
-              "--dx": `${(i%2===0?1:-1)*(8+i*6)}px`,
-              position:"absolute", bottom: -4-i*3, left:`${28+i*4}%`,
-              width:3, height:3, borderRadius:"50%",
-              background:["#ff4500","#ffaa00","#ff6600","#ffdd00","#fff"][i%5],
-              boxShadow:`0 0 6px ${["#ff4500","#ffaa00","#ff6600","#ffdd00","#fff"][i%5]}`,
-              animation:`emberUp ${0.6+i*0.12}s ${i*0.08}s ease-out infinite`,
-            }}/>
+              "--dx": `${(i % 2 === 0 ? 1 : -1) * (8 + i * 6)}px`,
+              position: "absolute", bottom: -4 - i * 3, left: `${28 + i * 4}%`,
+              width: 3, height: 3, borderRadius: "50%",
+              background: ["#ff4500", "#ffaa00", "#ff6600", "#ffdd00", "#fff"][i % 5],
+              boxShadow: `0 0 6px ${["#ff4500", "#ffaa00", "#ff6600", "#ffdd00", "#fff"][i % 5]}`,
+              animation: `emberUp ${0.6 + i * 0.12}s ${i * 0.08}s ease-out infinite`,
+            }} />
           ))}
 
           {/* Pulse rings at ignition */}
-          {phase === "ignition" && [0,1].map(i => (
+          {phase === "ignition" && [0, 1].map(i => (
             <div key={i} style={{
-              position:"absolute", bottom:-16, left:"50%",
-              transform:"translateX(-50%)",
-              width:80, height:80, borderRadius:"50%",
-              border:"1px solid rgba(255,100,0,0.5)",
-              animation:`pulseRing 0.7s ${i*0.35}s ease-out infinite`,
-            }}/>
+              position: "absolute", bottom: -16, left: "50%",
+              transform: "translateX(-50%)",
+              width: 80, height: 80, borderRadius: "50%",
+              border: "1px solid rgba(255,100,0,0.5)",
+              animation: `pulseRing 0.7s ${i * 0.35}s ease-out infinite`,
+            }} />
           ))}
         </div>
       )}
@@ -526,38 +526,38 @@ export default function Launch({ onComplete }) {
       {/* ── Content reveal ── */}
       {showContent && (
         <div style={{
-          position:"absolute", inset:0, zIndex:9,
-          display:"flex", flexDirection:"column",
-          alignItems:"center", justifyContent:"center",
-          padding:"0 24px", textAlign:"center",
-          pointerEvents:"none",
+          position: "absolute", inset: 0, zIndex: 9,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          padding: "0 24px", textAlign: "center",
+          pointerEvents: "none",
         }}>
 
           {/* Top rule */}
           <div style={{
-            width:"min(260px,68vw)", height:1,
-            background:"linear-gradient(90deg, transparent, rgba(255,100,0,.7), transparent)",
-            marginBottom:20,
-            animation:"fadeUp .6s ease both",
-          }}/>
+            width: "min(260px,68vw)", height: 1,
+            background: "linear-gradient(90deg, transparent, rgba(255,100,0,.7), transparent)",
+            marginBottom: 20,
+            animation: "fadeUp .6s ease both",
+          }} />
 
           {/* Provenance */}
           <p style={{
-            fontFamily:"'Crimson Text', Georgia, serif",
-            fontStyle:"italic",
-            fontSize:"clamp(11px,2vw,15px)",
-            color:"rgba(255,170,100,.75)",
-            letterSpacing:"0.28em",
-            textTransform:"uppercase",
-            margin:"0 0 14px",
-            animation:"fadeUp .7s .08s ease both",
-            opacity:0, animationFillMode:"forwards",
+            fontFamily: "'Crimson Text', Georgia, serif",
+            fontStyle: "italic",
+            fontSize: "clamp(11px,2vw,15px)",
+            color: "rgba(255,170,100,.75)",
+            letterSpacing: "0.28em",
+            textTransform: "uppercase",
+            margin: "0 0 14px",
+            animation: "fadeUp .7s .08s ease both",
+            opacity: 0, animationFillMode: "forwards",
           }}>
             Sivakasi's Finest &nbsp;·&nbsp; Est. 2009
           </p>
 
           {/* Title */}
-          <h1 style={{ margin:"0 0 4px", lineHeight:1.0 }}>
+          <h1 style={{ margin: "0 0 4px", lineHeight: 1.0 }}>
             <Word
               text="MADHU NISHA"
               delay={0.18}
@@ -572,103 +572,103 @@ export default function Launch({ onComplete }) {
 
           {/* Thin divider */}
           <div style={{
-            display:"flex", alignItems:"center", gap:10, margin:"18px 0",
-            animation:"fadeUp .6s 1.15s ease both",
-            opacity:0, animationFillMode:"forwards",
+            display: "flex", alignItems: "center", gap: 10, margin: "18px 0",
+            animation: "fadeUp .6s 1.15s ease both",
+            opacity: 0, animationFillMode: "forwards",
           }}>
-            <div style={{width:48, height:"0.5px", background:"linear-gradient(90deg,transparent,rgba(255,110,0,.6))"}}/>
-            <span style={{fontSize:18, lineHeight:1}}>🎆</span>
-            <div style={{width:4, height:4, borderRadius:"50%", background:"#ff8844", opacity:.7}}/>
-            <span style={{fontSize:18, lineHeight:1}}>🎇</span>
-            <div style={{width:48, height:"0.5px", background:"linear-gradient(90deg,rgba(255,110,0,.6),transparent)"}}/>
+            <div style={{ width: 48, height: "0.5px", background: "linear-gradient(90deg,transparent,rgba(255,110,0,.6))" }} />
+            <span style={{ fontSize: 18, lineHeight: 1 }}>🎆</span>
+            <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#ff8844", opacity: .7 }} />
+            <span style={{ fontSize: 18, lineHeight: 1 }}>🎇</span>
+            <div style={{ width: 48, height: "0.5px", background: "linear-gradient(90deg,rgba(255,110,0,.6),transparent)" }} />
           </div>
 
           {/* Tagline */}
           <p style={{
-            fontFamily:"'Crimson Text', Georgia, serif",
-            fontSize:"clamp(13px,2.4vw,18px)",
-            color:"rgba(255,205,160,.8)",
-            letterSpacing:"0.08em",
-            maxWidth:480, lineHeight:1.75,
-            margin:"0 0 28px",
-            animation:"fadeUp .8s 1.3s ease both",
-            opacity:0, animationFillMode:"forwards",
+            fontFamily: "'Crimson Text', Georgia, serif",
+            fontSize: "clamp(13px,2.4vw,18px)",
+            color: "rgba(255,205,160,.8)",
+            letterSpacing: "0.08em",
+            maxWidth: 480, lineHeight: 1.75,
+            margin: "0 0 28px",
+            animation: "fadeUp .8s 1.3s ease both",
+            opacity: 0, animationFillMode: "forwards",
           }}>
-            Premium quality fireworks crafted in the heart of Sivakasi —<br/>
+            Premium quality fireworks crafted in the heart of Sivakasi —<br />
             lighting up every celebration since 2009.
           </p>
 
           {/* CTA pill */}
           <div style={{
-            animation:"fadeUp .6s 1.6s ease both",
-            opacity:0, animationFillMode:"forwards",
+            animation: "fadeUp .6s 1.6s ease both",
+            opacity: 0, animationFillMode: "forwards",
           }}>
             <div style={{
-              display:"inline-flex", alignItems:"center", gap:8,
-              padding:"10px 30px",
-              borderRadius:2,
-              border:"1px solid rgba(255,100,0,.32)",
-              background:"rgba(255,55,0,.06)",
-              backdropFilter:"blur(6px)",
-              color:"rgba(255,155,90,.85)",
-              fontFamily:"'Cinzel', serif",
-              fontSize:"clamp(8px,1.5vw,11px)",
-              letterSpacing:"0.38em",
-              textTransform:"uppercase",
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "10px 30px",
+              borderRadius: 2,
+              border: "1px solid rgba(255,100,0,.32)",
+              background: "rgba(255,55,0,.06)",
+              backdropFilter: "blur(6px)",
+              color: "rgba(255,155,90,.85)",
+              fontFamily: "'Cinzel', serif",
+              fontSize: "clamp(8px,1.5vw,11px)",
+              letterSpacing: "0.38em",
+              textTransform: "uppercase",
             }}>
               <div style={{
-                width:5, height:5, borderRadius:"50%",
-                background:"#ff4500",
-                boxShadow:"0 0 8px #ff4500",
-                animation:"antennaBlink 1.2s ease-in-out infinite",
-              }}/>
+                width: 5, height: 5, borderRadius: "50%",
+                background: "#ff4500",
+                boxShadow: "0 0 8px #ff4500",
+                animation: "antennaBlink 1.2s ease-in-out infinite",
+              }} />
               Entering Showroom
             </div>
           </div>
 
           {/* Bottom rule */}
           <div style={{
-            width:"min(260px,68vw)", height:1,
-            background:"linear-gradient(90deg, transparent, rgba(255,100,0,.7), transparent)",
-            marginTop:22,
-            animation:"fadeUp .6s 1.8s ease both",
-            opacity:0, animationFillMode:"forwards",
-          }}/>
+            width: "min(260px,68vw)", height: 1,
+            background: "linear-gradient(90deg, transparent, rgba(255,100,0,.7), transparent)",
+            marginTop: 22,
+            animation: "fadeUp .6s 1.8s ease both",
+            opacity: 0, animationFillMode: "forwards",
+          }} />
         </div>
       )}
 
       {/* ── Top bar ── */}
       <div style={{
-        position:"absolute", top:0, left:0, right:0, zIndex:10,
-        display:"flex", justifyContent:"space-between", alignItems:"center",
-        padding:"11px 22px",
-        borderBottom:"1px solid rgba(255,70,0,.08)",
-        background:"rgba(0,0,0,.5)",
-        backdropFilter:"blur(8px)",
+        position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "11px 22px",
+        borderBottom: "1px solid rgba(255,70,0,.08)",
+        background: "rgba(0,0,0,.5)",
+        backdropFilter: "blur(8px)",
       }}>
-        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <div style={{
-            width:5, height:5, borderRadius:"50%",
+            width: 5, height: 5, borderRadius: "50%",
             background: lit ? "#ff4500" : "#1f1f1f",
             boxShadow: lit ? "0 0 8px #ff4500" : "none",
-            transition:"all .4s",
+            transition: "all .4s",
             animation: lit ? "antennaBlink 1.2s ease-in-out infinite" : "none",
-          }}/>
+          }} />
           <span style={{
-            fontFamily:"'Cinzel',serif",
-            fontSize:8,
-            letterSpacing:"0.32em",
-            color:"rgba(255,120,60,.45)",
-            textTransform:"uppercase",
+            fontFamily: "'Cinzel',serif",
+            fontSize: 8,
+            letterSpacing: "0.32em",
+            color: "rgba(255,120,60,.45)",
+            textTransform: "uppercase",
           }}>
             Madhu Nisha Crackers
           </span>
         </div>
         <span style={{
-          fontSize:8,
-          color:"rgba(255,80,0,.3)",
-          fontFamily:"monospace",
-          letterSpacing:"0.08em",
+          fontSize: 8,
+          color: "rgba(255,80,0,.3)",
+          fontFamily: "monospace",
+          letterSpacing: "0.08em",
         }}>
           {phase.toUpperCase()}
         </span>
@@ -676,37 +676,37 @@ export default function Launch({ onComplete }) {
 
       {/* ── Progress bar ── */}
       <div style={{
-        position:"absolute", bottom:0, left:0, right:0, zIndex:10,
-        background:"linear-gradient(to top, rgba(0,0,0,.85), transparent)",
+        position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10,
+        background: "linear-gradient(to top, rgba(0,0,0,.85), transparent)",
       }}>
         <div style={{
-          display:"flex", justifyContent:"space-between",
-          padding:"7px 22px 5px",
-          fontSize:8,
-          color:"rgba(255,255,255,.15)",
-          fontFamily:"monospace",
-          letterSpacing:"0.1em",
-          textTransform:"uppercase",
+          display: "flex", justifyContent: "space-between",
+          padding: "7px 22px 5px",
+          fontSize: 8,
+          color: "rgba(255,255,255,.15)",
+          fontFamily: "monospace",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
         }}>
           <span>Igniting experience</span>
           <span>{Math.round(progress)}%</span>
         </div>
-        <div style={{ height:1.5, background:"rgba(255,255,255,.04)", position:"relative", overflow:"hidden" }}>
+        <div style={{ height: 1.5, background: "rgba(255,255,255,.04)", position: "relative", overflow: "hidden" }}>
           <div style={{
-            height:"100%",
-            width:`${progress}%`,
+            height: "100%",
+            width: `${progress}%`,
             background: progress > 90
               ? "linear-gradient(90deg,#22c55e,#4ade80)"
               : "linear-gradient(90deg,#7f1d1d,#dc2626,#ff4500,#ffaa00)",
-            transition:"width .1s linear, background .5s",
-            boxShadow:"0 0 10px #ff450070",
-            position:"relative",
+            transition: "width .1s linear, background .5s",
+            boxShadow: "0 0 10px #ff450070",
+            position: "relative",
           }}>
             <div style={{
-              position:"absolute", top:0, bottom:0, width:"35%",
-              background:"linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent)",
-              animation:"barShine 1.2s linear infinite",
-            }}/>
+              position: "absolute", top: 0, bottom: 0, width: "35%",
+              background: "linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent)",
+              animation: "barShine 1.2s linear infinite",
+            }} />
           </div>
         </div>
       </div>
