@@ -135,6 +135,7 @@ const ORDERED_TYPES = [
   "Cololur Fountain Mega",
   "Crackling Fountain",
   "Ground Chakkars",
+  "Walas",
   "New Arrivals",
   "Vip Special Crackers",
   "Sparklers",
@@ -1351,6 +1352,7 @@ export default function Home() {
         "delux_crackers",
         "bijili_crackers",
         "vip_special_crackers",
+        "walas",
       ],
       night: [
         "repeating_shots",
